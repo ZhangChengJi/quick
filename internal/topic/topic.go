@@ -1,0 +1,24 @@
+package topic
+
+const (
+
+	//属性配置上报 QoS1
+	Property_config_post_topic = "sys/+/thing/property/config/post"
+
+	//属性配置主动获取
+	Property_config_get_topic = "sys/+/thing/property/config/get"
+
+	//属性上报topic
+	Property_post_topic = "sys/+/thing/property/post"
+
+	//事件上报topic QoS1
+	Event_post_topic = "sys/+/thing/event/post"
+
+	K_device_metadata_chanl = "k_device_metadata_chan"
+
+	K_device_data_chanl = "k_device_data_chan"
+
+	K_device_event_chanl = "k_device_event_chan"
+
+	Device_notify = "device/notify1/"
+)

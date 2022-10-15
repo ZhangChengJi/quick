@@ -12,12 +12,6 @@ conf:
     log-in-console: true
 
 
-
-
-  etcd:
-    endpoints:            # supports defining multiple etcd host addresses for an etcd cluster
-      - 192.168.0.71:2379
-    prefix: giot
   mysql:
     host: 39.103.163.143
     port: 3306
@@ -27,17 +21,11 @@ conf:
     max_idle_conns: 5 # 最大空闲的连接数
     Max_open_conns: 30
     show_sql: true
-  gnet:
-    addr: 0.0.0.0:9000
-    multicore: true
-    reuseport: true
   mqtt:
     host: 192.168.0.73
     port: 1883
     username: admin
     password: dory@2022
-    scheduler_client_id: scheduler
-    virtual_client_id: virtual
   tdengine:
     host: h1.taosdata.com
     port: 6030
@@ -48,12 +36,10 @@ conf:
   redis:
     addr: 192.168.0.73:6379
     password:
-    db: 0
-      # yamllint disable rule:comments-indentation
-    # etcd basic auth info
-    # username: "root"    # ignore etcd username if not enable etcd auth
-    # password: "123456"  # ignore etcd password if not enable etcd auth
-
+    db: 1
+  rabbitmq:
+    uri: amqp://guest:guest@127.0.0.1:1521/
+    exchange:
   log:
     error_log:
       level: debug       # supports levels, lower to higher: debug, info, warn, error, panic, fatal

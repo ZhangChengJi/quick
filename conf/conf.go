@@ -22,28 +22,13 @@ var (
 	ENV            string
 	WorkDir        = "."
 	ConfigFile     = ""
-	ETCDConfig     *Etcd
 	MysqlConfig    *Mysql
-	GnetConfig     *Gnet
 	MqttConfig     *Mqtt
 	TdengineConfig *Tdengine
 	RedisConfig    *Redis
+	RabbitMQConfig *RabbitMQ
 	ZapConfig      *Zap
 )
-
-type MTLS struct {
-	CaFile   string `mapstructure:"ca_file"`
-	CertFile string `mapstructure:"cert_file"`
-	KeyFile  string `mapstructure:"key_file"`
-}
-
-type Etcd struct {
-	Endpoints []string
-	Username  string
-	Password  string
-	MTLS      *MTLS
-	Prefix    string
-}
 
 type Mysql struct {
 	Host         string
@@ -76,13 +61,17 @@ type Redis struct {
 	Password string
 	Db       int
 }
+type RabbitMQ struct {
+	Uri      string
+	Exchange string
+}
+
 type Conf struct {
-	Etcd      Etcd
 	Mqtt      Mqtt
 	Mysql     Mysql
-	Gnet      Gnet
 	Tdengine  Tdengine
 	Redis     Redis
+	RabbitMQ  RabbitMQ
 	Zap       Zap
 	AllowList []string `mapstructure:"allow_list"`
 	MaxCpu    int      `mapstructure:"max_cpu"`
@@ -91,11 +80,7 @@ type Conf struct {
 type Config struct {
 	Conf Conf
 }
-type Gnet struct {
-	Addr      string
-	Multicore bool
-	Reuseport bool
-}
+
 type Zap struct {
 	Level         string `mapstructure:"level" json:"level" yaml:"level"`                            // 级别
 	Prefix        string `mapstructure:"prefix" json:"prefix" yaml:"prefix"`                         // 日志前缀
@@ -198,17 +183,11 @@ func setupConfig() {
 	if len(config.Conf.Zap.Level) > 0 {
 		initZapConfig(config.Conf.Zap)
 	}
-	// ETCD Storage
-	if len(config.Conf.Etcd.Endpoints) > 0 {
-		initEtcdConfig(config.Conf.Etcd)
-	}
+
 	if len(config.Conf.Mysql.Host) > 0 {
 		initMysqlConfig(config.Conf.Mysql)
 	}
-	if len(config.Conf.Gnet.Addr) > 0 {
-		initGnetConfig(config.Conf.Gnet)
 
-	}
 	if len(config.Conf.Tdengine.Host) > 0 {
 		initTdengine(config.Conf.Tdengine)
 
@@ -218,6 +197,9 @@ func setupConfig() {
 	}
 	if len(config.Conf.Redis.Addr) > 0 {
 		initRedis(config.Conf.Redis)
+	}
+	if len(config.Conf.RabbitMQ.Uri) > 0 {
+		initRabbitMQ(config.Conf.RabbitMQ)
 	}
 
 	// set degree of parallelism
@@ -248,26 +230,6 @@ func initZapConfig(conf Zap) {
 	}
 }
 
-// initialize etcd config
-func initEtcdConfig(conf Etcd) {
-	var endpoints = []string{"127.0.0.1:2379"}
-	if len(conf.Endpoints) > 0 {
-		endpoints = conf.Endpoints
-	}
-
-	prefix := "giot"
-	if len(conf.Prefix) > 0 {
-		prefix = conf.Prefix
-	}
-
-	ETCDConfig = &Etcd{
-		Endpoints: endpoints,
-		Username:  conf.Username,
-		Password:  conf.Password,
-		MTLS:      conf.MTLS,
-		Prefix:    prefix,
-	}
-}
 func initMysqlConfig(conf Mysql) {
 	MysqlConfig = &Mysql{
 		Host:         conf.Host,
@@ -294,13 +256,6 @@ func initParallelism(choiceCores int) {
 	runtime.GOMAXPROCS(choiceCores)
 }
 
-func initGnetConfig(conf Gnet) {
-	GnetConfig = &Gnet{
-		Addr:      conf.Addr,
-		Multicore: conf.Multicore,
-		Reuseport: conf.Reuseport,
-	}
-}
 func initTdengine(conf Tdengine) {
 	TdengineConfig = &Tdengine{
 		Host:     conf.Host,
@@ -322,5 +277,10 @@ func initRedis(conf Redis) {
 		Addr:     conf.Addr,
 		Password: conf.Password,
 		Db:       conf.Db,
+	}
+}
+func initRabbitMQ(conf RabbitMQ) {
+	RabbitMQConfig = &RabbitMQ{
+		Uri: conf.Uri,
 	}
 }

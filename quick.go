@@ -1,7 +1,10 @@
 package main
 
-import "quick/cmd"
+import (
+	"quick/cmd"
+)
 
 func main() {
 	cmd.Run()
+
 }

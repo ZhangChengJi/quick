@@ -3,10 +3,9 @@ package mqtt
 import (
 	"fmt"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"math/rand"
+	"os"
 	"quick/conf"
 	"quick/pkg/log"
-	"strconv"
 	"time"
 )
 
@@ -14,18 +13,20 @@ var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Me
 	fmt.Printf("接收消息: 从话题[ %s ] 发来的内容: %s \n", msg.Topic(), msg.Payload())
 }
 
-func New(conf *conf.Mqtt) (mqtt.Client, error) {
-	conf.ClientId = "quick" + strconv.Itoa(rand.New(rand.NewSource(time.Now().UnixNano())).Int())
+func New() mqtt.Client {
+	mqttConfig := conf.MqttConfig
+	//mqttConfig.ClientId = "quick" + strconv.Itoa(rand.New(rand.NewSource(time.Now().UnixNano())).Int())
+	mqttConfig.ClientId = "quick"
 	opts := mqtt.NewClientOptions()
-	opts.AddBroker(fmt.Sprintf("tcp://%s:%v", conf.Host, conf.Port))
-	opts.SetClientID(conf.ClientId)
-	opts.SetKeepAlive(5 * time.Second)
+	opts.AddBroker(fmt.Sprintf("tcp://%s:%v", mqttConfig.Host, mqttConfig.Port))
+	opts.SetClientID(mqttConfig.ClientId)
+	opts.SetKeepAlive(10 * time.Second)
 	//opts.SetDefaultPublishHandler(f)
-	opts.SetPingTimeout(1 * time.Second)
+	opts.SetPingTimeout(3 * time.Second)
 	opts.SetCleanSession(false)
 	//opts.SetDefaultPublishHandler(messagePubHandler)
-	opts.SetUsername(conf.Username)
-	opts.SetPassword(conf.Password)
+	opts.SetUsername(mqttConfig.Username)
+	opts.SetPassword(mqttConfig.Password)
 	opts.OnConnect = connectHandler
 	opts.OnConnectionLost = connectLostHandler
 	opts.SetWill("offline", "go_mqtt_client offline", 1, false)
@@ -33,9 +34,10 @@ func New(conf *conf.Mqtt) (mqtt.Client, error) {
 	c := mqtt.NewClient(opts)
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
 		log.Sugar.Errorf("mqtt connect failed:%s", token.Error())
-		return nil, token.Error()
+		os.Exit(1)
+		return nil
 	}
-	return c, nil
+	return c
 
 }
 

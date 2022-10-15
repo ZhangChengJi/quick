@@ -8,8 +8,11 @@ import (
 	"os"
 	"os/signal"
 	"quick/conf"
+	"quick/internal/consume"
+	"quick/internal/property"
 	"quick/pkg/log"
 	"syscall"
+	"time"
 )
 
 func init() {
@@ -65,11 +68,9 @@ func NewServer() *server {
 	return &server{}
 }
 func (s *server) Start(er chan error) {
-	//err := s.init()
-	//if err != nil {
-	//	er <- err
-	//	return
-	//}
+	go property.Start()
+	consume.Start()
+
 	s.printInfo()
 }
 func (s *server) Stop() {
@@ -77,5 +78,6 @@ func (s *server) Stop() {
 
 }
 func (s *server) printInfo() {
+	time.Sleep(600 * time.Microsecond)
 	fmt.Fprint(os.Stdout, "quick running successfully!\n\n")
 }
