@@ -28,6 +28,29 @@ func queryDevice(iccid string) (*model.PigDevice, error) {
 
 	return pigDevice, err
 }
+func updateDeviceStatus(iccid string, status int) {
+	device, err := queryDevice(iccid)
+	if err != nil {
+		return
+	}
+	if device.LineStatus == status {
+		return
+	}
+	var pigDevice *model.PigDevice
+	err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("line_status", status).Error
+	if err == nil {
+		err := db.DB.Where(&model.PigDevice{Id: iccid}).First(&pigDevice).Error
+		if err == nil {
+			marshal, err := json.Marshal(&pigDevice)
+			if err != nil {
+				return
+			}
+			db.RDB.Set(iccid, string(marshal), -1)
+
+		}
+	}
+
+}
 func createOrUpdateSlave(slave *model.PigDeviceSlave) {
 	err := db.DB.Where(&model.PigDeviceSlave{
 		DeviceId:      slave.DeviceId,
@@ -94,5 +117,8 @@ func sendAwait5Second(iccid string, slaveId int) bool {
 	} else {
 		return false
 	}
-
+}
+func clearSendAwait(iccid string, slaveId int) {
+	key := db.RDB.GetAwaitSendKey(iccid, strconv.Itoa(slaveId))
+	db.RDB.Del(key)
 }

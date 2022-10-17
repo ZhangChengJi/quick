@@ -14,11 +14,17 @@ const (
 	//事件上报topic QoS1
 	Event_post_topic = "sys/+/thing/event/post"
 
+	Device_connect = "sys/+/thing/connect"
+
+	Device_disconnect = "sys/+/thing/disconnect"
+
 	K_device_metadata_chanl = "k_device_metadata_chan"
 
 	K_device_data_chanl = "k_device_data_chan"
 
 	K_device_event_chanl = "k_device_event_chan"
+
+	K_device_line = "k_device_line"
 
 	Device_notify = "device/notify1/"
 )

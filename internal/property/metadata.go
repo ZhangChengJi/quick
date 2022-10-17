@@ -30,6 +30,10 @@ type Event struct {
 	Da    string `json:"da"`
 	Le    int    `json:"le"`
 }
+type Line struct {
+	Iccid  string `json:"iccid"`
+	Status string `json:"status"`
+}
 
 func (m *Metadata) Execute() {
 	_, err := queryDevice(m.Iccid)
@@ -62,6 +66,8 @@ const (
 	DATA          = "data"
 	ALARM         = "alarm"
 	HITCH         = "hitch"
+	ONLINE        = "online"  //上线
+	OFFLINE       = "offline" //下线
 )
 
 func (d *Data) Execute() {
@@ -108,30 +114,32 @@ func (d *Event) Execute() {
 	if err != nil {
 		return
 	}
-
-	msg := &DeviceMsg{
-		Ts:           time.Now(),
-		DataType:     ALARM,
-		Level:        d.Le,
-		DeviceId:     d.Iccid,
-		SlaveId:      d.Sl,
-		SlaveName:    "探头" + strconv.Itoa(d.Sl),
-		Data:         d.Da,
-		Unit:         slaveProperty.PropertyUnit,
-		PropertyName: slaveProperty.PropertyName,
-		Name:         device.DeviceName,
-		Address:      device.DeviceAddress,
-	}
-	//有分组的情况下进行发送短信提醒
-	if device.GroupId != 0 {
-		//第一次发送过短信需要等待5分钟之后再次发送
-		if sendAwait5Second(d.Iccid, d.Sl) {
-			//发送电话短信通知
-			Publish(string(append([]byte(topic.Device_notify), d.Iccid...)), msg)
+	if d.Le == High || d.Le == Low {
+		msg := &DeviceMsg{
+			Ts:           time.Now(),
+			DataType:     ALARM,
+			Level:        d.Le,
+			DeviceId:     d.Iccid,
+			SlaveId:      d.Sl,
+			SlaveName:    "探头" + strconv.Itoa(d.Sl),
+			Data:         d.Da,
+			Unit:         slaveProperty.PropertyUnit,
+			PropertyName: slaveProperty.PropertyName,
+			Name:         device.DeviceName,
+			Address:      device.DeviceAddress,
 		}
+		//有分组的情况下进行发送短信提醒
+		if device.GroupId != 0 {
+			//第一次发送过短信需要等待5分钟之后再次发送
+			if sendAwait5Second(d.Iccid, d.Sl) {
+				//发送电话短信通知
+				Publish(string(append([]byte(topic.Device_notify), d.Iccid...)), msg)
+			}
+		}
+		queue.Enqueue(msg)
+	} else if d.Le == Normal {
+		clearSendAwait(d.Iccid, d.Sl)
 	}
-	queue.Enqueue(msg)
-
 	msg1 := &DeviceMsg{
 		Ts:           time.Now(),
 		DataType:     DATA,
@@ -144,4 +152,11 @@ func (d *Event) Execute() {
 		PropertyName: slaveProperty.PropertyName,
 	}
 	queue.Enqueue(msg1)
+}
+func (l *Line) Execute() {
+	if l.Status == ONLINE {
+		updateDeviceStatus(l.Iccid, 1)
+	} else {
+		updateDeviceStatus(l.Iccid, 0)
+	}
 }

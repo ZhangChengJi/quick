@@ -21,6 +21,7 @@ type property struct {
 	zq1      chan *Metadata
 	zq2      chan *Data
 	zq3      chan *Event
+	zq4      chan *Line
 }
 
 type Interface interface {
@@ -48,11 +49,14 @@ func (p *property) run() {
 	p.zq1 = make(chan *Metadata, 1024)
 	p.zq2 = make(chan *Data, 1024)
 	p.zq3 = make(chan *Event, 1024)
+	p.zq4 = make(chan *Line, 1024)
 	go p.zqRead()
 	go batch(queue, 4, db.TDB)
 	p.mqtt.Subscribe(topic.Property_config_post_topic, 1, p.propertyMetaHandler)
 	p.mqtt.Subscribe(topic.Property_post_topic, 1, p.propertyHandler)
 	p.mqtt.Subscribe(topic.Event_post_topic, 1, p.eventHandler)
+	p.mqtt.Subscribe(topic.Device_connect, 1, p.connectHandler)
+	p.mqtt.Subscribe(topic.Device_disconnect, 1, p.disconnectHandler)
 }
 func (p *property) propertyMetaHandler(client mqtt.Client, msg mqtt.Message) {
 	if iccid, ok := p.getIccid(msg.Topic()); ok {
@@ -77,7 +81,6 @@ func (p *property) propertyHandler(client mqtt.Client, msg mqtt.Message) {
 }
 func (p *property) eventHandler(client mqtt.Client, msg mqtt.Message) {
 	if iccid, ok := p.getIccid(msg.Topic()); ok {
-
 		var event *Event
 		if err := p.format(msg.Payload(), &event); err == nil {
 			event.Iccid = iccid
@@ -87,10 +90,22 @@ func (p *property) eventHandler(client mqtt.Client, msg mqtt.Message) {
 }
 
 func (p *property) connectHandler(client mqtt.Client, msg mqtt.Message) {
+	if iccid, ok := p.getIccid(msg.Topic()); ok {
+		p.zq4 <- &Line{
+			Iccid:  iccid,
+			Status: string(msg.Payload()),
+		}
 
+	}
 }
 func (p *property) disconnectHandler(client mqtt.Client, msg mqtt.Message) {
+	if iccid, ok := p.getIccid(msg.Topic()); ok {
+		p.zq4 <- &Line{
+			Iccid:  iccid,
+			Status: string(msg.Payload()),
+		}
 
+	}
 }
 func (p *property) zqRead() {
 	for {
@@ -107,6 +122,10 @@ func (p *property) zqRead() {
 			var buf []byte
 			p.tobuf(&entry, &buf)
 			p.transfer.SendPropertyEvent(buf)
+		case entry := <-p.zq4:
+			var buf []byte
+			p.tobuf(&entry, &buf)
+			p.transfer.SendDeviceLine(buf)
 		}
 
 	}

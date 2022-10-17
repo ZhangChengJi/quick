@@ -12,6 +12,7 @@ type consume struct {
 	metadataRead rabbitmq.Interface
 	dataRead     rabbitmq.Interface
 	eventRead    rabbitmq.Interface
+	lineRead     rabbitmq.Interface
 }
 type Interface interface {
 	receivedPropertyMetadata()
@@ -24,10 +25,12 @@ func Start() {
 		metadataRead: rabbitmq.NewRabbitMQSimple(topic.K_device_metadata_chanl),
 		dataRead:     rabbitmq.NewRabbitMQSimple(topic.K_device_data_chanl),
 		eventRead:    rabbitmq.NewRabbitMQSimple(topic.K_device_event_chanl),
+		lineRead:     rabbitmq.NewRabbitMQSimple(topic.K_device_line),
 	}
 	go t.metadataRead.ConsumeSimple(t.receivedPropertyMetadata)
 	go t.eventRead.ConsumeSimple(t.receivedPropertyEvent)
 	go t.dataRead.ConsumeSimple(t.receivedPropertyData)
+	go t.lineRead.ConsumeSimple(t.receivedDeviceLine)
 }
 
 func (c *consume) receivedPropertyMetadata(bytes []byte) {
@@ -47,7 +50,12 @@ func (c *consume) receivedPropertyEvent(bytes []byte) {
 	if err := c.format(bytes, &me); err == nil {
 		me.Execute()
 	}
-
+}
+func (c *consume) receivedDeviceLine(bytes []byte) {
+	var me *property.Line
+	if err := c.format(bytes, &me); err == nil {
+		me.Execute()
+	}
 }
 func (c *consume) format(msg []byte, i interface{}) error {
 	err := json.Unmarshal(msg, i)
