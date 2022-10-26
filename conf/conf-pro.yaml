@@ -13,7 +13,7 @@ conf:
 
 
   mysql:
-    host: 192.168.0.72
+    host: 172.26.56.197
     port: 3306
     username: root
     password: dory@2022
@@ -22,7 +22,7 @@ conf:
     Max_open_conns: 30
     show_sql: true
   mqtt:
-    host: 192.168.0.73
+    host: iot.sddory.com
     port: 1883
     username: admin
     password: dory@2022
@@ -34,15 +34,15 @@ conf:
     Keep: 90
     Days: 20
   redis:
-    addr: 192.168.0.73:6379
+    addr: 172.26.56.198:6379
     password:
     db: 1
   rabbitmq:
-    uri: amqp://guest:guest@192.168.0.73:5672/
+    uri: amqp://guest:guest@127.0.0.1:1521/
     exchange:
   log:
     error_log:
-      level: debug       # supports levels, lower to higher: debug, info, warn, error, panic, fatal
+      level: info       # supports levels, lower to higher: debug, info, warn, error, panic, fatal
       file_path:
         logs/error.logs  # supports relative path, absolute path, standard output
         # such as: logs/error.logs, /tmp/logs/error.logs, /dev/stdout, /dev/stderr

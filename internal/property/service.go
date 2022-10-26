@@ -38,6 +38,8 @@ func updateDeviceStatus(iccid string, status int) {
 	}
 	var pigDevice *model.PigDevice
 	err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("line_status", status).Error
+	var pigDeviceSlave model.PigDeviceSlave
+	err = db.DB.Model(&pigDeviceSlave).Where("device_id=? ", iccid).Update("line_status", status).Error
 	if err == nil {
 		err := db.DB.Where(&model.PigDevice{Id: iccid}).First(&pigDevice).Error
 		if err == nil {
@@ -46,7 +48,6 @@ func updateDeviceStatus(iccid string, status int) {
 				return
 			}
 			db.RDB.Set(iccid, string(marshal), -1)
-
 		}
 	}
 
@@ -70,7 +71,19 @@ func createOrUpdateSlave(slave *model.PigDeviceSlave) {
 	db.RDB.HSet(db.RDB.GetSlaveKey(slave.DeviceId), strconv.Itoa(slave.ModbusAddress), &slave)
 
 }
+func getSlaveSize(iccid string) int {
+	var count int64
+	db.DB.Debug().Model(&model.PigDeviceSlave{}).Where("device_id=?", iccid).Count(&count)
+	strInt64 := strconv.FormatInt(count, 10)
+	id16, _ := strconv.Atoi(strInt64)
+	return id16
+}
+func deleteSlaveMax(iccid string, size int) {
+	if len(iccid) > 0 {
+		db.DB.Debug().Where("device_id=?", iccid).Order("modbus_address DESC").Limit(size).Delete(&model.PigDeviceSlave{})
 
+	}
+}
 func getSlaveProperty(iccid string, slaveId int) (*model.PigProperty, error) {
 	var slave model.PigDeviceSlave
 	err := db.RDB.HGet(db.RDB.GetSlaveKey(iccid), strconv.Itoa(slaveId), &slave)

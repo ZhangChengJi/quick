@@ -70,12 +70,10 @@ func (p *property) propertyMetaHandler(client mqtt.Client, msg mqtt.Message) {
 
 func (p *property) propertyHandler(client mqtt.Client, msg mqtt.Message) {
 	if iccid, ok := p.getIccid(msg.Topic()); ok {
-		var data []*Data
+		var data *Data
 		if err := p.format(msg.Payload(), &data); err == nil {
-			for _, da := range data {
-				da.Iccid = iccid
-				p.zq2 <- da
-			}
+			data.Iccid = iccid
+			p.zq2 <- data
 		}
 	}
 }
@@ -93,18 +91,16 @@ func (p *property) connectHandler(client mqtt.Client, msg mqtt.Message) {
 	if iccid, ok := p.getIccid(msg.Topic()); ok {
 		p.zq4 <- &Line{
 			Iccid:  iccid,
-			Status: string(msg.Payload()),
+			Status: ONLINE,
 		}
-
 	}
 }
 func (p *property) disconnectHandler(client mqtt.Client, msg mqtt.Message) {
 	if iccid, ok := p.getIccid(msg.Topic()); ok {
 		p.zq4 <- &Line{
 			Iccid:  iccid,
-			Status: string(msg.Payload()),
+			Status: OFFLINE,
 		}
-
 	}
 }
 func (p *property) zqRead() {

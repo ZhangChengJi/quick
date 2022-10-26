@@ -5,6 +5,7 @@ import (
 	"github.com/streadway/amqp"
 	"math/rand"
 	"os"
+	"quick/conf"
 	"quick/pkg/log"
 
 	"time"
@@ -34,7 +35,7 @@ func NewRabbitMQ(queueName string, exchange string, key string) *RabbitMQ {
 		QueueName: queueName,
 		Exchange:  exchange,
 		Key:       key,
-		Mqurl:     "amqp://guest:guest@192.168.0.68:5673",
+		Mqurl:     conf.RabbitMQConfig.Uri,
 	}
 	var err error
 	//创建rabbitmq连接

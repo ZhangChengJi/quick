@@ -26,5 +26,7 @@ const (
 
 	K_device_line = "k_device_line"
 
+	Device_alarm  = "device/alarm/"
 	Device_notify = "device/notify1/"
+	Device_last   = "device/last/"
 )

@@ -29,7 +29,7 @@ func New() mqtt.Client {
 	opts.SetPassword(mqttConfig.Password)
 	opts.OnConnect = connectHandler
 	opts.OnConnectionLost = connectLostHandler
-	opts.SetWill("offline", "go_mqtt_client offline", 1, false)
+	//opts.SetWill("sys/45454/thing/disconnect", "go_mqtt_cli22312", 1, false)
 
 	c := mqtt.NewClient(opts)
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
