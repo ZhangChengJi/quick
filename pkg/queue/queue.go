@@ -130,21 +130,21 @@ func (q *Queue) isBatchable() bool {
 	return q.enqueued >= q.dequeued+uint64(q.MaxBatchSize()) && q.enqueued > 0
 }
 
-/// Increase message count enqueued
+// / Increase message count enqueued
 func (q *Queue) enqueuedWith(size uint64) uint64 {
 	q.enqueued += size
 	// q.poll_batchable()
 	return q.enqueued
 }
 
-/// Incerase message count dequeued
+// / Incerase message count dequeued
 func (q *Queue) dequeuedWith(size uint64) uint64 {
 	q.dequeued += size
 	// q.poll_batchable()
 	return q.dequeued
 }
 
-/// Put one message into queue
+// / Put one message into queue
 func (q *Queue) EnqueueOnce(msg interface{}) (bool, error) {
 	q.enqueueLocker.Lock()
 	defer q.enqueueLocker.Unlock()
@@ -159,7 +159,7 @@ func (q *Queue) EnqueueOnce(msg interface{}) (bool, error) {
 	return true, nil
 }
 
-/// Push messages into queue
+// / Push messages into queue
 func (q *Queue) Enqueue(msgs ...interface{}) (int, error) {
 	q.enqueueLocker.Lock()
 	defer q.enqueueLocker.Unlock()
@@ -186,6 +186,7 @@ func (q *Queue) Enqueue(msgs ...interface{}) (int, error) {
 		// logs.Printf("Queue size: %v, chan len: %v", q.Size(), len(q.queue))
 		return add, nil
 	}
+	return 0, nil
 }
 
 func (q *Queue) takeOne() (interface{}, error) {
@@ -222,12 +223,12 @@ func (q *Queue) takeBatch(batchSize int, allowPartialDequeue bool) ([]interface{
 	return msgs, nil
 }
 
-/// Dequeue one message
+// / Dequeue one message
 func (q *Queue) Take() (interface{}, error) {
 	return q.takeOne()
 }
 
-/// Dequeue N messages
+// / Dequeue N messages
 func (q *Queue) DequeueN(size int) ([]interface{}, error) {
 	if size <= 0 {
 		return q.Dequeue()
@@ -236,7 +237,7 @@ func (q *Queue) DequeueN(size int) ([]interface{}, error) {
 	}
 }
 
-/// Dequeue messages with preset options, default return array of messages with equal or less than MaxBatchSize
+// / Dequeue messages with preset options, default return array of messages with equal or less than MaxBatchSize
 func (q *Queue) Dequeue() ([]interface{}, error) {
 	batchSize := q.MaxBatchSize()
 	msgs, err := q.takeBatch(batchSize, false)

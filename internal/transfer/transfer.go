@@ -16,9 +16,9 @@ type Writer struct {
 }
 type Interface interface {
 	SendPropertyMetadata(buf []byte)
-	SendPropertyData(buf []byte)
-	SendPropertyEvent(buf []byte)
-	SendDeviceLine(buf []byte)
+	SendProperty(buf []byte)
+	SendEvent(buf []byte)
+	SendLine(buf []byte)
 }
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -33,15 +33,16 @@ func New() Interface {
 
 	return t
 }
+
 func (t *transfer) SendPropertyMetadata(buf []byte) {
 	t.metadataWriter.PushMessage(buf)
 }
-func (t *transfer) SendPropertyData(buf []byte) {
+func (t *transfer) SendProperty(buf []byte) {
 	t.dataWriter.PushMessage(buf)
 }
-func (t *transfer) SendPropertyEvent(buf []byte) {
+func (t *transfer) SendEvent(buf []byte) {
 	t.eventWriter.PushMessage(buf)
 }
-func (t *transfer) SendDeviceLine(buf []byte) {
+func (t *transfer) SendLine(buf []byte) {
 	t.deviceLine.PushMessage(buf)
 }

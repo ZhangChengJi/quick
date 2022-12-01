@@ -50,7 +50,10 @@ func (p *property) run() {
 	p.zq2 = make(chan *Data, 1024)
 	p.zq3 = make(chan *Event, 1024)
 	p.zq4 = make(chan *Line, 1024)
-	go p.zqRead()
+	//使用多个协程处理p.zqRead()，避免阻塞
+	for i := 0; i < 4; i++ {
+		go p.zqRead()
+	}
 	go batch(queue, 4, db.TDB)
 	p.mqtt.Subscribe(topic.Property_config_post_topic, 1, p.propertyMetaHandler)
 	p.mqtt.Subscribe(topic.Property_post_topic, 1, p.propertyHandler)
@@ -108,20 +111,24 @@ func (p *property) zqRead() {
 		select {
 		case entry := <-p.zq1:
 			var buf []byte
-			p.tobuf(entry, &buf)
-			p.transfer.SendPropertyMetadata(buf)
+			if err := p.tobuf(entry, &buf); err == nil {
+				p.transfer.SendPropertyMetadata(buf)
+			}
 		case entry := <-p.zq2:
 			var buf []byte
-			p.tobuf(&entry, &buf)
-			p.transfer.SendPropertyData(buf)
+			if err := p.tobuf(entry, &buf); err == nil {
+				p.transfer.SendProperty(buf)
+			}
 		case entry := <-p.zq3:
 			var buf []byte
-			p.tobuf(&entry, &buf)
-			p.transfer.SendPropertyEvent(buf)
+			if err := p.tobuf(entry, &buf); err == nil {
+				p.transfer.SendEvent(buf)
+			}
 		case entry := <-p.zq4:
 			var buf []byte
-			p.tobuf(&entry, &buf)
-			p.transfer.SendDeviceLine(buf)
+			if err := p.tobuf(entry, &buf); err == nil {
+				p.transfer.SendLine(buf)
+			}
 		}
 
 	}

@@ -1,6 +1,7 @@
 package property
 
 import (
+	"fmt"
 	"quick/internal/topic"
 	"quick/manager/model"
 	"quick/pkg/log"
@@ -45,22 +46,36 @@ func (m *Metadata) Execute() {
 		updateDeviceStatus(m.Iccid, ONLINE_INT)
 	}
 	for _, metadata := range m.List {
-		slave := model.PigDeviceSlave{
-			DeviceId:      m.Iccid,
-			SlaveName:     "探测器" + strconv.Itoa(metadata.Sl),
-			ModbusAddress: metadata.Sl,
-			PropertyId:    metadata.Pr,
-			SlaveDesc:     "",
-			SlaveStatus:   1,
-			LineStatus:    1,
+
+		property, err := getProperty(metadata.Pr)
+		if err != nil {
+			return
 		}
-		createOrUpdateSlave(&slave)
+		if property != nil {
+			slave := model.PigDeviceSlave{
+				DeviceId:      m.Iccid,
+				SlaveName:     "探测器" + strconv.Itoa(metadata.Sl),
+				ModbusAddress: metadata.Sl,
+				PropertyId:    metadata.Pr,
+				SlaveDesc:     "",
+				SlaveStatus:   1,
+				LineStatus:    1,
+			}
+			createOrUpdateSlave(&slave)
+
+		} else {
+			log.Sugar.Errorf("属性id传递错误%v", err)
+			continue
+		}
 	}
-	slaveCount := getSlaveSize(m.Iccid)
-	//如果原来的设备探测器大于新配置的，就进行删除大于出来的设备
-	if slaveCount > m.Co {
-		as := slaveCount - m.Co
-		deleteSlaveMax(m.Iccid, as)
+	if len(m.List) > 0 {
+		slaveCount := getSlaveSize(m.Iccid)
+		//如果原来的设备探测器大于新配置的，就进行删除大于出来的设备
+		if slaveCount > m.Co {
+			as := slaveCount - m.Co
+			deleteSlaveMax(m.Iccid, as)
+		}
+		db.RDB.Del(db.RDB.GetSlaveKey(m.Iccid))
 	}
 }
 
@@ -93,23 +108,11 @@ func (d *Data) Execute() {
 	if err != nil {
 		return
 	}
-	var msg *DeviceMsg
-	msg = &DeviceMsg{
-		Ts:           time.Now(),
-		DataType:     DATA,
-		Level:        d.Le,
-		DeviceId:     d.Iccid,
-		SlaveId:      d.Sl,
-		SlaveName:    "探测器" + strconv.Itoa(d.Sl),
-		Data:         d.Da,
-		Unit:         slaveProperty.PropertyUnit,
-		PropertyName: slaveProperty.PropertyName,
-	}
-	queue.Enqueue(msg)
-	if d.Le == High || d.Le == Low {
+	if slaveProperty != nil {
+		var msg *DeviceMsg
 		msg = &DeviceMsg{
 			Ts:           time.Now(),
-			DataType:     ALARM,
+			DataType:     DATA,
 			Level:        d.Le,
 			DeviceId:     d.Iccid,
 			SlaveId:      d.Sl,
@@ -118,12 +121,25 @@ func (d *Data) Execute() {
 			Unit:         slaveProperty.PropertyUnit,
 			PropertyName: slaveProperty.PropertyName,
 		}
-		Publish(string(append([]byte(topic.Device_alarm), d.Iccid...)), msg)
 		queue.Enqueue(msg)
+		if d.Le == High || d.Le == Low {
+			msg = &DeviceMsg{
+				Ts:           time.Now(),
+				DataType:     ALARM,
+				Level:        d.Le,
+				DeviceId:     d.Iccid,
+				SlaveId:      d.Sl,
+				SlaveName:    "探测器" + strconv.Itoa(d.Sl),
+				Data:         d.Da,
+				Unit:         slaveProperty.PropertyUnit,
+				PropertyName: slaveProperty.PropertyName,
+			}
+			//Publish(fmt.Sprintf(topic.Device_alarm, strconv.Itoa(device.GroupId), d.Iccid), msg)
+			queue.Enqueue(msg)
 
+		}
+		Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg)
 	}
-	Publish(string(append([]byte(topic.Device_last), d.Iccid...)), msg)
-
 }
 
 func (d *Event) Execute() {
@@ -138,11 +154,46 @@ func (d *Event) Execute() {
 	if err != nil {
 		return
 	}
-	var msg *DeviceMsg
-	if d.Le == High || d.Le == Low {
+	if slaveProperty != nil {
+		var msg *DeviceMsg
+		if d.Le == High || d.Le == Low || d.Le == Normal {
+			msg = &DeviceMsg{
+				Ts:           time.Now(),
+				DataType:     ALARM,
+				Level:        d.Le,
+				DeviceId:     d.Iccid,
+				SlaveId:      d.Sl,
+				GroupId:      device.GroupId,
+				SlaveName:    "探测器" + strconv.Itoa(d.Sl),
+				Data:         d.Da,
+				Unit:         slaveProperty.PropertyUnit,
+				PropertyName: slaveProperty.PropertyName,
+				Name:         device.DeviceName,
+				Address:      device.DeviceAddress,
+			}
+			Publish(fmt.Sprintf(topic.Device_alarm, strconv.Itoa(device.GroupId), d.Iccid), msg)
+			if d.Le == High || d.Le == Low {
+				//有分组的情况下进行发送短信提醒
+				if device.GroupId != 0 {
+					//第一次发送过短信需要等待5分钟之后再次发送
+					if sendAwait5Second(d.Iccid, d.Sl) {
+						//发送电话短信通知
+						//topic.Device_notify的+插入d.Ic
+						Publish(fmt.Sprintf(topic.Device_notify, d.Iccid), msg)
+					}
+				}
+
+				queue.Enqueue(msg)
+			}
+
+			if d.Le == Normal { //如果为正常
+				clearSendAwait(d.Iccid, d.Sl)
+			}
+
+		}
 		msg = &DeviceMsg{
 			Ts:           time.Now(),
-			DataType:     ALARM,
+			DataType:     DATA,
 			Level:        d.Le,
 			DeviceId:     d.Iccid,
 			SlaveId:      d.Sl,
@@ -150,37 +201,10 @@ func (d *Event) Execute() {
 			Data:         d.Da,
 			Unit:         slaveProperty.PropertyUnit,
 			PropertyName: slaveProperty.PropertyName,
-			Name:         device.DeviceName,
-			Address:      device.DeviceAddress,
 		}
-		Publish(string(append([]byte(topic.Device_alarm), d.Iccid...)), msg)
-		//有分组的情况下进行发送短信提醒
-		if device.GroupId != 0 {
-			//第一次发送过短信需要等待5分钟之后再次发送
-			if sendAwait5Second(d.Iccid, d.Sl) {
-				//发送电话短信通知
-				Publish(string(append([]byte(topic.Device_notify), d.Iccid...)), msg)
-			}
-		}
-
 		queue.Enqueue(msg)
-	} else if d.Le == Normal { //如果为正常
-		clearSendAwait(d.Iccid, d.Sl)
+		Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg)
 	}
-	msg = &DeviceMsg{
-		Ts:           time.Now(),
-		DataType:     DATA,
-		Level:        d.Le,
-		DeviceId:     d.Iccid,
-		SlaveId:      d.Sl,
-		SlaveName:    "探测器" + strconv.Itoa(d.Sl),
-		Data:         d.Da,
-		Unit:         slaveProperty.PropertyUnit,
-		PropertyName: slaveProperty.PropertyName,
-	}
-	queue.Enqueue(msg)
-	Publish(string(append([]byte(topic.Device_last), d.Iccid...)), msg)
-
 }
 func (l *Line) Execute() {
 	if l.Status == ONLINE {

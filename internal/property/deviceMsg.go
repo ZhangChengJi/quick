@@ -12,7 +12,7 @@ type DeviceMsg struct {
 	DataType     string    `json:"dataType"`
 	Level        int       `json:"level"`
 	DeviceId     string    `json:"deviceId"`
-	GroupId      int32     `json:"groupId"`
+	GroupId      int       `json:"groupId"`
 	Status       string    `json:"status"`
 	Name         string    `json:"name" `
 	SlaveId      int       `json:"slaveId"`

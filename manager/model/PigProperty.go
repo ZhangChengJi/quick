@@ -2,7 +2,7 @@ package model
 
 type PigProperty struct {
 	Id                     int    //
-	GroupId                int64  // 分类id
+	GroupId                int    // 分类id
 	AlarmRule              string // 告警条件
 	PropertyName           string // 属性名称
 	PropertyIdentification string // 属性标识

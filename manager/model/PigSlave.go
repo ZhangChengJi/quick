@@ -1,7 +1,7 @@
 package model
 
 type PigDeviceSlave struct {
-	Id            int64  //
+	Id            int    //
 	DeviceId      string // 设备ID
 	SlaveAlias    string // 从机设备别名
 	SlaveName     string // 从机设备名称

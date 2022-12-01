@@ -1,18 +1,16 @@
 package property
 
 import (
+	"fmt"
+	"quick/internal/topic"
 	"quick/manager/model"
-	"quick/pkg/log"
 	"strconv"
 	"time"
 )
 
-type service struct {
-}
-
 func queryDevice(iccid string) (*model.PigDevice, error) {
 	var pigDevice *model.PigDevice
-	if err := db.RDB.Get(iccid, &pigDevice); err == nil {
+	if err := db.RDB.Get(db.RDB.GetDeviceKey(iccid), &pigDevice); err == nil {
 		return pigDevice, nil
 
 	}
@@ -22,10 +20,9 @@ func queryDevice(iccid string) (*model.PigDevice, error) {
 		if err != nil {
 			return nil, err
 		}
-		db.RDB.Set(iccid, string(marshal), -1)
+		db.RDB.Set(db.RDB.GetDeviceKey(iccid), string(marshal), -1)
 		return pigDevice, nil
 	}
-
 	return pigDevice, err
 }
 func updateDeviceStatus(iccid string, status int) {
@@ -35,6 +32,9 @@ func updateDeviceStatus(iccid string, status int) {
 	}
 	if device.LineStatus == status {
 		return
+	}
+	if device.GroupId != 0 {
+		Publish(fmt.Sprintf(topic.Device_line, strconv.Itoa(device.GroupId), iccid), status)
 	}
 	var pigDevice *model.PigDevice
 	err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("line_status", status).Error
@@ -47,28 +47,26 @@ func updateDeviceStatus(iccid string, status int) {
 			if err != nil {
 				return
 			}
-			db.RDB.Set(iccid, string(marshal), -1)
+			db.RDB.Set(db.RDB.GetDeviceKey(iccid), string(marshal), -1)
 		}
 	}
 
 }
 func createOrUpdateSlave(slave *model.PigDeviceSlave) {
+	var pigDeviceSlave *model.PigDeviceSlave
 	err := db.DB.Where(&model.PigDeviceSlave{
 		DeviceId:      slave.DeviceId,
 		ModbusAddress: slave.ModbusAddress,
-	}).Assign(
-		&model.PigDeviceSlave{
-			DeviceId:      slave.DeviceId,
-			ModbusAddress: slave.ModbusAddress,
-			PropertyId:    slave.PropertyId,
-			SlaveName:     slave.SlaveName,
-		},
-	).FirstOrCreate(&slave).Error
-	if err != nil {
-		log.Sugar.Errorf("探测器更新失败%s", err)
-		return
+	}).First(&pigDeviceSlave).Error
+	if err != nil { //不存在
+		db.DB.Create(&slave) //创建
+	} else {
+		if slave.PropertyId != 0 && slave.PropertyId != pigDeviceSlave.PropertyId { //如果新传递的属性不为0，并且不等于原来的属性
+			pigDeviceSlave.PropertyId = slave.PropertyId //更新属性
+			db.DB.Model(&pigDeviceSlave).UpdateColumns(&model.PigDeviceSlave{PropertyId: slave.PropertyId})
+
+		}
 	}
-	db.RDB.HSet(db.RDB.GetSlaveKey(slave.DeviceId), strconv.Itoa(slave.ModbusAddress), &slave)
 
 }
 func getSlaveSize(iccid string) int {
@@ -81,14 +79,13 @@ func getSlaveSize(iccid string) int {
 func deleteSlaveMax(iccid string, size int) {
 	if len(iccid) > 0 {
 		db.DB.Debug().Where("device_id=?", iccid).Order("modbus_address DESC").Limit(size).Delete(&model.PigDeviceSlave{})
-
 	}
 }
+
 func getSlaveProperty(iccid string, slaveId int) (*model.PigProperty, error) {
 	var slave model.PigDeviceSlave
 	err := db.RDB.HGet(db.RDB.GetSlaveKey(iccid), strconv.Itoa(slaveId), &slave)
 	if err == nil {
-
 		return getProperty(slave.PropertyId)
 	}
 	err = db.DB.Where(&model.PigDeviceSlave{

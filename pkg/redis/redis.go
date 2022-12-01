@@ -3,9 +3,9 @@ package redis
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/go-redis/redis/v8"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/cast"
 	"os"
 	"quick/conf"
@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // RedisClient Redis 服务
 type RedisClient struct {
