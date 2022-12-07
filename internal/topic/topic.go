@@ -26,7 +26,7 @@ const (
 
 	K_device_line = "k_device_line"
 
-	Device_alarm  = "device/%s/%s/event/post"
+	Device_event  = "device/%s/%s/event/post"
 	Device_notify = "device/%s/notify/post"
 	Device_line   = "device/%s/%s/line/post"
 	Device_last   = "device/%s/property/post"

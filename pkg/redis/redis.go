@@ -85,7 +85,7 @@ func (rds RedisClient) GetAwaitSendKey(iccid, slaveId string) string {
 // Set 存储 key 对应的 value，且设置 expiration 过期时间
 func (rds RedisClient) Set(key string, value interface{}, expiration time.Duration) bool {
 	if err := rds.Client.Set(rds.Context, key, value, expiration).Err(); err != nil {
-		log.Sugar.Errorf("Redis", "Set", err.Error())
+		log.Sugar.Warnf("Redis", "Set", err.Error())
 		return false
 	}
 	return true
@@ -94,12 +94,11 @@ func (rds RedisClient) Set(key string, value interface{}, expiration time.Durati
 // Get 获取 key 对应的 value
 func (rds RedisClient) Get(key string, model interface{}) error {
 	result, err := rds.Client.Get(rds.Context, key).Result()
-	err = json.Unmarshal([]byte(result), &model)
 	if err != nil {
 		log.Sugar.Errorf("Redis", "Get", err.Error())
 		return err
 	}
-
+	err = json.Unmarshal([]byte(result), &model)
 	return nil
 }
 
@@ -226,12 +225,11 @@ func (rds RedisClient) HSet(key, field string, model interface{}) {
 	if err != nil {
 		return
 	}
-	result, err := rds.Client.HSet(rds.Context, key, field, marshal).Result()
+	_, err = rds.Client.HSet(rds.Context, key, field, marshal).Result()
 	if err != nil {
 		return
 	}
 
-	fmt.Println(result)
 }
 func (rds RedisClient) HMSet(key string, model interface{}) {
 

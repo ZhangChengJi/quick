@@ -12,7 +12,6 @@ func queryDevice(iccid string) (*model.PigDevice, error) {
 	var pigDevice *model.PigDevice
 	if err := db.RDB.Get(db.RDB.GetDeviceKey(iccid), &pigDevice); err == nil {
 		return pigDevice, nil
-
 	}
 	err := db.DB.Where(&model.PigDevice{Id: iccid}).First(&pigDevice).Error
 	if err == nil {
@@ -54,14 +53,17 @@ func updateDeviceStatus(iccid string, status int) {
 }
 func createOrUpdateSlave(slave *model.PigDeviceSlave) {
 	var pigDeviceSlave *model.PigDeviceSlave
-	err := db.DB.Where(&model.PigDeviceSlave{
-		DeviceId:      slave.DeviceId,
-		ModbusAddress: slave.ModbusAddress,
-	}).First(&pigDeviceSlave).Error
-	if err != nil { //不存在
+	err := db.RDB.HGet(db.RDB.GetSlaveKey(slave.DeviceId), strconv.Itoa(slave.ModbusAddress), &pigDeviceSlave) //从redis中获取
+	if err != nil {                                                                                            //如果redis中没有
+		err = db.DB.Where(&model.PigDeviceSlave{ //从数据库中获取
+			DeviceId:      slave.DeviceId,
+			ModbusAddress: slave.ModbusAddress,
+		}).First(&pigDeviceSlave).Error
+	}
+	if err != nil { //如果数据库中没有
 		db.DB.Create(&slave) //创建
 	} else {
-		if slave.PropertyId != 0 && slave.PropertyId != pigDeviceSlave.PropertyId { //如果新传递的属性不为0，并且不等于原来的属性
+		if slave.PropertyId != 0 && slave.PropertyId != pigDeviceSlave.PropertyId { //如果新传递的属性不为0，并且不等于原来的属性就更新
 			pigDeviceSlave.PropertyId = slave.PropertyId //更新属性
 			db.DB.Model(&pigDeviceSlave).UpdateColumns(&model.PigDeviceSlave{PropertyId: slave.PropertyId})
 

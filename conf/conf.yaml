@@ -36,7 +36,7 @@ conf:
   redis:
     addr: 47.92.101.127:6379
     password: dory@2022
-    db: 1
+    db: 0
   rabbitmq:
     uri: amqp://guest:guest@47.92.101.127:5672/
     exchange:
