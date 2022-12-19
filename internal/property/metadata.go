@@ -14,6 +14,7 @@ type Metadata struct {
 	Co    int              `json:"co"`
 	List  []*SlaveMetadata `json:"list"`
 }
+
 type SlaveMetadata struct {
 	Sl int `json:"sl"`
 	Pr int `json:"pr"`
@@ -25,12 +26,14 @@ type Data struct {
 	Da    string `json:"da"`
 	Le    int    `json:"le"`
 }
+
 type Event struct {
 	Iccid string `json:"iccid"`
 	Sl    int    `json:"sl"`
 	Da    string `json:"da"`
 	Le    int    `json:"le"`
 }
+
 type Line struct {
 	Iccid  string `json:"iccid"`
 	Status string `json:"status"`

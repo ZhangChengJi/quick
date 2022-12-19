@@ -91,7 +91,7 @@ func getSlaveProperty(iccid string, slaveId int) (*model.PigProperty, error) {
 		return getProperty(slave.PropertyId)
 	}
 	err = db.DB.Where(&model.PigDeviceSlave{
-		DeviceId:      slave.DeviceId,
+		DeviceId:      iccid,
 		ModbusAddress: slaveId,
 	}).First(&slave).Error
 	if err == nil {
