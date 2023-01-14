@@ -29,11 +29,18 @@ func updateDeviceStatus(iccid string, status int) {
 	if err != nil {
 		return
 	}
+	if device.GroupId != 0 {
+		s := `{"deviceId":"%s","status":%d}`
+		sd := fmt.Sprintf(s, iccid, status)
+		line, err := json.Marshal(sd)
+		if err != nil {
+			return
+		}
+		Publish(fmt.Sprintf(topic.OpenApi_line, strconv.Itoa(device.GroupId), iccid), line)
+
+	}
 	if device.LineStatus == status {
 		return
-	}
-	if device.GroupId != 0 {
-		Publish(fmt.Sprintf(topic.Device_line, strconv.Itoa(device.GroupId), iccid), status)
 	}
 	var pigDevice *model.PigDevice
 	err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("line_status", status).Error

@@ -24,8 +24,8 @@ conf:
   mqtt:
     host: iot.sddory.com
     port: 1883
-    username: admin
-    password: dory@2022
+    username: juxunda
+    password: juxunda@202345465
   tdengine:
     host: h1.taosdata.com
     port: 6030

@@ -142,6 +142,7 @@ func (d *Data) Execute() {
 
 		}
 		Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg) //将数据发布到mqtt device/last
+		Publish(fmt.Sprintf(topic.OpenApi_data, de.GroupId, d.Iccid), msg)
 	}
 }
 
@@ -175,7 +176,8 @@ func (d *Event) Execute() {
 				Address:      device.DeviceAddress,
 			}
 			Publish(fmt.Sprintf(topic.Device_event, strconv.Itoa(device.GroupId), d.Iccid), msg) //将数据发布到mqtt device/event
-			if d.Le == High || d.Le == Low {                                                     //如果是高报或者低报
+			Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(device.GroupId), d.Iccid), msg)
+			if d.Le == High || d.Le == Low { //如果是高报或者低报
 				//有分组的情况下进行发送短信提醒
 				if device.GroupId != 0 { //如果设备有分组
 					//第一次发送过短信需要等待5分钟之后再次发送
@@ -206,6 +208,7 @@ func (d *Event) Execute() {
 		}
 		queue.Enqueue(msg)                                    //将数据放入队列
 		Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg) //将数据发布到mqtt device/last
+		Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(device.GroupId), d.Iccid), msg)
 	}
 }
 func (l *Line) Execute() {

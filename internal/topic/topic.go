@@ -30,4 +30,7 @@ const (
 	Device_notify = "device/%s/notify/post"
 	Device_line   = "device/%s/%s/line/post"
 	Device_last   = "device/%s/property/post"
+
+	OpenApi_data = "api/%s/%s/thing/post"
+	OpenApi_line = "api/%s/%s/line/post"
 )
