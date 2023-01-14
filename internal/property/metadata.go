@@ -142,7 +142,10 @@ func (d *Data) Execute() {
 
 		}
 		Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg) //将数据发布到mqtt device/last
-		Publish(fmt.Sprintf(topic.OpenApi_data, de.GroupId, d.Iccid), msg)
+		if de.GroupId != 0 {
+			Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(de.GroupId), d.Iccid), msg)
+		}
+
 	}
 }
 
