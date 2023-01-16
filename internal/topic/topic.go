@@ -31,6 +31,7 @@ const (
 	Device_line   = "device/%s/%s/line/post"
 	Device_last   = "device/%s/property/post"
 
-	OpenApi_data = "api/%s/%s/thing/post"
-	OpenApi_line = "api/%s/%s/line/post"
+	OpenApi_data  = "api/%s/%s/thing/post"
+	OpenApi_event = "api/%s/%s/event/post"
+	OpenApi_line  = "api/%s/%s/line/post"
 )
