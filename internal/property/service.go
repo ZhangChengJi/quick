@@ -29,6 +29,9 @@ func updateDeviceStatus(iccid string, status int) {
 	if err != nil {
 		return
 	}
+	if device.LineStatus == status {
+		return
+	}
 	if device.GroupId != 0 {
 		s := `{"deviceId":"%s","status":%d}`
 		sd := fmt.Sprintf(s, iccid, status)
@@ -36,16 +39,26 @@ func updateDeviceStatus(iccid string, status int) {
 		if err != nil {
 			return
 		}
+		if status == 0 {
+			line := 11
+			msg := &DeviceMsg{
+				Ts:       time.Now(),
+				DataType: ALARM,
+				Level:    line,
+				DeviceId: iccid,
+				GroupId:  device.GroupId,
+				Name:     device.DeviceName,
+				Address:  device.DeviceAddress,
+			}
+			Publish(fmt.Sprintf(topic.Device_event, strconv.Itoa(device.GroupId), iccid), msg)
+		}
+		Publish(fmt.Sprintf(topic.Device_line, strconv.Itoa(device.GroupId), iccid), status)
 		Publish(fmt.Sprintf(topic.OpenApi_line, strconv.Itoa(device.GroupId), iccid), line)
 
 	}
-	if device.LineStatus == status {
-		return
-	}
+
 	var pigDevice *model.PigDevice
 	err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("line_status", status).Error
-	var pigDeviceSlave model.PigDeviceSlave
-	err = db.DB.Model(&pigDeviceSlave).Where("device_id=? ", iccid).Update("line_status", status).Error
 	if err == nil {
 		err := db.DB.Where(&model.PigDevice{Id: iccid}).First(&pigDevice).Error
 		if err == nil {
@@ -55,6 +68,32 @@ func updateDeviceStatus(iccid string, status int) {
 			}
 			db.RDB.Set(db.RDB.GetDeviceKey(iccid), string(marshal), -1)
 		}
+	}
+	var pigDeviceSlave model.PigDeviceSlave
+	err = db.DB.Model(&pigDeviceSlave).Where("device_id=? ", iccid).Update("line_status", status).Error
+	installLine(iccid, status)
+
+}
+func installLine(iccid string, status int) {
+	var pigDeviceSlave []*model.PigDeviceSlave
+	err := db.DB.Find(&pigDeviceSlave, model.PigDeviceSlave{DeviceId: iccid}).Error
+	if err == nil {
+		line := 11
+		if status == 1 {
+			line = 10
+		}
+		for _, s := range pigDeviceSlave {
+			msg := &DeviceMsg{
+				Ts:        time.Now(),
+				DataType:  DATA,
+				Level:     line, //上线
+				DeviceId:  iccid,
+				SlaveId:   s.ModbusAddress,
+				SlaveName: s.SlaveName,
+			}
+			queue.Enqueue(msg)
+		}
+
 	}
 
 }

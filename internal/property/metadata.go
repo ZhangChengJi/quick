@@ -39,6 +39,10 @@ type Line struct {
 	Status string `json:"status"`
 }
 
+const (
+	defaultProductId = 0
+)
+
 func (m *Metadata) Execute() {
 	de, err := queryDevice(m.Iccid) //查询设备
 	if err != nil {
@@ -56,13 +60,19 @@ func (m *Metadata) Execute() {
 		}
 		if property != nil || metadata.Pr == 0 {
 			slave := model.PigDeviceSlave{
-				DeviceId:      m.Iccid,
-				SlaveName:     "探测器" + strconv.Itoa(metadata.Sl),
-				ModbusAddress: metadata.Sl,
-				PropertyId:    metadata.Pr,
-				SlaveDesc:     "",
-				SlaveStatus:   1,
-				LineStatus:    1,
+				DeviceId:       m.Iccid,
+				SlaveName:      "探测器" + strconv.Itoa(metadata.Sl),
+				ModbusAddress:  metadata.Sl,
+				PropertyId:     metadata.Pr,
+				ProductId:      defaultProductId,
+				SlaveDesc:      "",
+				SlaveStatus:    1,
+				LineStatus:     1,
+				CreateTime:     time.Now(),
+				UpdateTime:     time.Now(),
+				InstallDate:    time.Now(),
+				CheckStartDate: time.Now(),
+				CheckEndDate:   time.Now().AddDate(0, 0, 365),
 			}
 			createOrUpdateSlave(&slave) //创建或者更新设备的探测器
 
@@ -215,6 +225,7 @@ func (d *Event) Execute() {
 	}
 }
 func (l *Line) Execute() {
+
 	if l.Status == ONLINE {
 		updateDeviceStatus(l.Iccid, 1)
 	} else {
