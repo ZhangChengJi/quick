@@ -174,25 +174,25 @@ func (d *Event) Execute() {
 	if slaveProperty != nil { //如果设备属性存在
 		var msg *DeviceMsg
 		if d.Le == High || d.Le == Low || d.Le == Normal { //如果是高报或者低报或者正常
-			msg = &DeviceMsg{
-				Ts:           time.Now(),
-				DataType:     ALARM,
-				Level:        d.Le,
-				DeviceId:     d.Iccid,
-				SlaveId:      d.Sl,
-				GroupId:      device.GroupId,
-				SlaveName:    "探测器" + strconv.Itoa(d.Sl),
-				Data:         d.Da,
-				Unit:         slaveProperty.PropertyUnit,
-				PropertyName: slaveProperty.PropertyName,
-				Name:         device.DeviceName,
-				Address:      device.DeviceAddress,
-			}
-			Publish(fmt.Sprintf(topic.Device_event, strconv.Itoa(device.GroupId), d.Iccid), msg) //将数据发布到mqtt device/event
-			Publish(fmt.Sprintf(topic.OpenApi_event, strconv.Itoa(device.GroupId), d.Iccid), msg)
-			if d.Le == High || d.Le == Low { //如果是高报或者低报
-				//有分组的情况下进行发送短信提醒
-				if device.GroupId != 0 { //如果设备有分组
+			if device.GroupId != 0 { //如果设备有分组
+				msg = &DeviceMsg{
+					Ts:           time.Now(),
+					DataType:     ALARM,
+					Level:        d.Le,
+					DeviceId:     d.Iccid,
+					SlaveId:      d.Sl,
+					GroupId:      device.GroupId,
+					SlaveName:    "探测器" + strconv.Itoa(d.Sl),
+					Data:         d.Da,
+					Unit:         slaveProperty.PropertyUnit,
+					PropertyName: slaveProperty.PropertyName,
+					Name:         device.DeviceName,
+					Address:      device.DeviceAddress,
+				}
+				Publish(fmt.Sprintf(topic.Device_event, strconv.Itoa(device.GroupId), d.Iccid), msg) //将数据发布到mqtt device/event
+				Publish(fmt.Sprintf(topic.OpenApi_event, strconv.Itoa(device.GroupId), d.Iccid), msg)
+				if d.Le == High || d.Le == Low { //如果是高报或者低报
+					//有分组的情况下进行发送短信提醒
 					//第一次发送过短信需要等待5分钟之后再次发送
 					if sendAwait5Second(d.Iccid, d.Sl) {
 						//发送电话短信通知
@@ -200,7 +200,7 @@ func (d *Event) Execute() {
 						Publish(fmt.Sprintf(topic.Device_notify, d.Iccid), msg) //将数据发布到mqtt device/notify
 					}
 				}
-				queue.Enqueue(msg) //将数据放入队列
+				queue.Enqueue(msg) //将数据放入alarm队列
 			}
 
 			if d.Le == Normal { //如果为正常
@@ -219,7 +219,7 @@ func (d *Event) Execute() {
 			Unit:         slaveProperty.PropertyUnit,
 			PropertyName: slaveProperty.PropertyName,
 		}
-		queue.Enqueue(msg)                                    //将数据放入队列
+		queue.Enqueue(msg)                                    //将数据放入正常队列                              //将数据放入队列
 		Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg) //将数据发布到mqtt device/last
 		Publish(fmt.Sprintf(topic.OpenApi_event, strconv.Itoa(device.GroupId), d.Iccid), msg)
 	}

@@ -16,7 +16,7 @@ var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Me
 func New() mqtt.Client {
 	mqttConfig := conf.MqttConfig
 	//mqttConfig.ClientId = "quick" + strconv.Itoa(rand.New(rand.NewSource(time.Now().UnixNano())).Int())
-	mqttConfig.ClientId = "quick224"
+	mqttConfig.ClientId = "quick"
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%s:%v", mqttConfig.Host, mqttConfig.Port))
 	opts.SetClientID(mqttConfig.ClientId)

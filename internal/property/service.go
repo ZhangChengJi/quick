@@ -50,6 +50,7 @@ func updateDeviceStatus(iccid string, status int) {
 				Name:     device.DeviceName,
 				Address:  device.DeviceAddress,
 			}
+			Publish(fmt.Sprintf(topic.Device_notify, iccid), msg)
 			Publish(fmt.Sprintf(topic.Device_event, strconv.Itoa(device.GroupId), iccid), msg)
 		}
 		Publish(fmt.Sprintf(topic.Device_line, strconv.Itoa(device.GroupId), iccid), status)
