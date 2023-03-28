@@ -9,6 +9,7 @@ import (
 	mysql "quick/pkg/gorm"
 	"quick/pkg/log"
 	cache "quick/pkg/redis"
+	"quick/pkg/tdengine"
 )
 
 type Database struct {
@@ -26,7 +27,7 @@ func New() *Database {
 	}
 
 	rdb := cache.NewClient(conf.RedisConfig)
-	//tdb, err := tdengine.New(conf.TdengineConfig)
+	tdb, err := tdengine.New(conf.TdengineConfig)
 	if err != nil {
 		log.Sugar.Errorf("tdengine连接失败%s", err)
 		os.Exit(1)
@@ -35,7 +36,7 @@ func New() *Database {
 	return &Database{
 		DB:  db,
 		RDB: rdb,
-		//TDB: tdb,
+		TDB: tdb,
 	}
 }
 
