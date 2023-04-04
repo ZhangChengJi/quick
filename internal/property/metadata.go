@@ -93,20 +93,23 @@ func (m *Metadata) Execute() {
 }
 
 const (
-	Normal        = iota //正常
-	High                 //高报
-	Low                  //低报
-	Internal             //探测器内部错误
-	Communication        //通讯错误
-	Shield               //主机屏蔽探测器
-	SlaveHitch           //探测器故障
-	DATA          = "data"
-	ALARM         = "alarm"
-	HITCH         = "hitch"
-	ONLINE        = "online"  //上线
-	OFFLINE       = "offline" //下线
-	ONLINE_INT    = 1         //上线
-	OFFLINE_INT   = 0         //下线
+	Normal        = iota //正常0
+	High                 //高报1
+	Low                  //低报2
+	Internal             //探测器内部错误3
+	Communication        //通讯错误4
+	Shield               //主机屏蔽探测器5
+	SlaveHitch           //探测器故障6
+	MainHitch            //主电故障
+	PrepareHitch         //备电故障
+
+	DATA        = "data"
+	ALARM       = "alarm"
+	HITCH       = "hitch"
+	ONLINE      = "online"  //上线
+	OFFLINE     = "offline" //下线
+	ONLINE_INT  = 1         //上线
+	OFFLINE_INT = 0         //下线
 )
 
 func (d *Data) Execute() {
@@ -116,6 +119,10 @@ func (d *Data) Execute() {
 	}
 	if de.LineStatus == OFFLINE_INT { //如果设备是离线状态，就改为在线状态
 		updateDeviceStatus(d.Iccid, ONLINE_INT)
+	}
+	pigSlave, err := querySlave(d.Iccid, d.Sl)
+	if err != nil {
+		return
 	}
 	slaveProperty, err := getSlaveProperty(d.Iccid, d.Sl) //查询设备的属性
 	if err != nil {
@@ -128,8 +135,9 @@ func (d *Data) Execute() {
 			DataType:     DATA,
 			Level:        d.Le,
 			DeviceId:     d.Iccid,
+			GroupId:      de.GroupId,
 			SlaveId:      d.Sl,
-			SlaveName:    "探测器" + strconv.Itoa(d.Sl),
+			SlaveName:    pigSlave.SlaveName,
 			Data:         d.Da,
 			Unit:         slaveProperty.PropertyUnit,
 			PropertyName: slaveProperty.PropertyName,
@@ -139,11 +147,12 @@ func (d *Data) Execute() {
 		if d.Le == High || d.Le == Low { //如果是高报或者低报
 			msg = &DeviceMsg{
 				Ts:           time.Now(),
+				GroupId:      de.GroupId,
 				DataType:     ALARM,
 				Level:        d.Le,
 				DeviceId:     d.Iccid,
 				SlaveId:      d.Sl,
-				SlaveName:    "探测器" + strconv.Itoa(d.Sl),
+				SlaveName:    pigSlave.SlaveName,
 				Data:         d.Da,
 				Unit:         slaveProperty.PropertyUnit,
 				PropertyName: slaveProperty.PropertyName,
@@ -167,6 +176,10 @@ func (d *Event) Execute() {
 	if device.LineStatus == OFFLINE_INT { //如果设备是离线状态，就改为在线状态
 		updateDeviceStatus(d.Iccid, ONLINE_INT)
 	}
+	pigSlave, err := querySlave(d.Iccid, d.Sl)
+	if err != nil {
+		return
+	}
 	slaveProperty, err := getSlaveProperty(d.Iccid, d.Sl) //查询设备的属性
 	if err != nil {
 		return
@@ -182,7 +195,7 @@ func (d *Event) Execute() {
 					DeviceId:     d.Iccid,
 					SlaveId:      d.Sl,
 					GroupId:      device.GroupId,
-					SlaveName:    "探测器" + strconv.Itoa(d.Sl),
+					SlaveName:    pigSlave.SlaveName,
 					Data:         d.Da,
 					Unit:         slaveProperty.PropertyUnit,
 					PropertyName: slaveProperty.PropertyName,
@@ -199,8 +212,9 @@ func (d *Event) Execute() {
 						//topic.Device_notify的+插入d.Ic
 						Publish(fmt.Sprintf(topic.Device_notify, d.Iccid), msg) //将数据发布到mqtt device/notify
 					}
+					queue.Enqueue(msg) //将数据放入alarm队列
 				}
-				queue.Enqueue(msg) //将数据放入alarm队列
+
 			}
 
 			if d.Le == Normal { //如果为正常
@@ -213,8 +227,9 @@ func (d *Event) Execute() {
 			DataType:     DATA,
 			Level:        d.Le,
 			DeviceId:     d.Iccid,
+			GroupId:      device.GroupId,
 			SlaveId:      d.Sl,
-			SlaveName:    "探测器" + strconv.Itoa(d.Sl),
+			SlaveName:    pigSlave.SlaveName,
 			Data:         d.Da,
 			Unit:         slaveProperty.PropertyUnit,
 			PropertyName: slaveProperty.PropertyName,

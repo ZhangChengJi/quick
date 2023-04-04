@@ -24,6 +24,24 @@ func queryDevice(iccid string) (*model.PigDevice, error) {
 	}
 	return pigDevice, err
 }
+func querySlave(iccid string, slaveId int) (*model.PigDeviceSlave, error) {
+	var pigDeviceSlave *model.PigDeviceSlave
+	err := db.RDB.HGet(db.RDB.GetSlaveKey(iccid), strconv.Itoa(slaveId), &pigDeviceSlave) //从redis中获取
+	if err != nil {                                                                       //如果redis中没有
+		err = db.DB.Where(&model.PigDeviceSlave{ //从数据库中获取
+			DeviceId:      iccid,
+			ModbusAddress: slaveId,
+		}).First(&pigDeviceSlave).Error
+		if err == nil { //如果数据库中没有
+			db.RDB.HSet(db.RDB.GetSlaveKey(iccid), strconv.Itoa(slaveId), pigDeviceSlave)
+			return pigDeviceSlave, nil
+		}
+	} else {
+		return pigDeviceSlave, nil
+	}
+	return nil, err
+
+}
 func updateDeviceStatus(iccid string, status int) {
 	device, err := queryDevice(iccid)
 	if err != nil {
