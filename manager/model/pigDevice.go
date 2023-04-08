@@ -13,7 +13,8 @@ type PigDevice struct {
 	DeviceAddress    string `gorm:"column:device_address" json:"deviceAddress"`       // 设备地址
 	DeviceCoordinate string `gorm:"column:device_coordinate" json:"deviceCoordinate"` // 设备坐标信息
 	GroupId          int    `gorm:"column:group_id" json:"groupId"`                   // 绑定分组id
-
+	MainHitch        int    `gorm:"column:main_hitch" json:"mainHitch"`               //主电故障
+	PrepareHitch     int    `gorm:"column:prepare_hitch" json:"prepareHitch"`         //备电故障
 }
 
 func (PigDevice) TableName() string {

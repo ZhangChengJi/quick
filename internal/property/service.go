@@ -19,7 +19,7 @@ func queryDevice(iccid string) (*model.PigDevice, error) {
 		if err != nil {
 			return nil, err
 		}
-		db.RDB.Set(db.RDB.GetDeviceKey(iccid), string(marshal), -1)
+		db.RDB.Set(db.RDB.GetDeviceKey(iccid), string(marshal), 360*time.Hour)
 		return pigDevice, nil
 	}
 	return pigDevice, err
@@ -58,9 +58,10 @@ func updateDeviceStatus(iccid string, status int) {
 			return
 		}
 		if status == 0 {
-			line := 11
+			line := 21 //离线
 			msg := &DeviceMsg{
-				Ts:       time.Now(),
+				Ts: time.Now(),
+
 				DataType: ALARM,
 				Level:    line,
 				DeviceId: iccid,
@@ -85,7 +86,7 @@ func updateDeviceStatus(iccid string, status int) {
 			if err != nil {
 				return
 			}
-			db.RDB.Set(db.RDB.GetDeviceKey(iccid), string(marshal), -1)
+			db.RDB.Set(db.RDB.GetDeviceKey(iccid), string(marshal), 360*time.Hour) //15天
 		}
 	}
 	var pigDeviceSlave model.PigDeviceSlave
@@ -93,6 +94,48 @@ func updateDeviceStatus(iccid string, status int) {
 	installLine(iccid, status)
 
 }
+func updateDeviceHitch(iccid string, hitch int) {
+	var err error
+	var pigDevice *model.PigDevice
+	if hitch == 7 || hitch == 9 {
+		if hitch == 7 {
+			hitch = 1
+		}
+		if hitch == 9 {
+			hitch = 0
+		}
+		err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("main_hitch", hitch).Error
+
+	}
+	if hitch == 8 || hitch == 10 {
+		if hitch == 8 {
+			hitch = 1
+		}
+		if hitch == 10 {
+			hitch = 0
+		}
+		err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("prepare_hitch", hitch).Error
+
+	}
+	if hitch == 11 {
+		err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("main_hitch", 0).Error
+		err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("prepare_hitch", 0).Error
+
+	}
+	if err == nil {
+		err := db.DB.Where(&model.PigDevice{Id: iccid}).First(&pigDevice).Error
+		if err == nil {
+			marshal, err := json.Marshal(&pigDevice)
+			if err != nil {
+				return
+			}
+			db.RDB.Set(db.RDB.GetDeviceKey(iccid), string(marshal), 360*time.Hour)
+		}
+	}
+
+}
+
+// 上下线操作
 func installLine(iccid string, status int) {
 	var pigDeviceSlave []*model.PigDeviceSlave
 	err := db.DB.Find(&pigDeviceSlave, model.PigDeviceSlave{DeviceId: iccid}).Error
@@ -103,7 +146,8 @@ func installLine(iccid string, status int) {
 		}
 		for _, s := range pigDeviceSlave {
 			msg := &DeviceMsg{
-				Ts:        time.Now(),
+				Ts: time.Now(),
+
 				DataType:  DATA,
 				Level:     line, //上线
 				DeviceId:  iccid,

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/lithammer/dedent"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -68,9 +69,9 @@ func NewServer() *server {
 	return &server{}
 }
 func (s *server) Start(er chan error) {
+
 	go property.Start()
 	consume.Start()
-
 	s.printInfo()
 }
 func (s *server) Stop() {

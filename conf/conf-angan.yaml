@@ -13,19 +13,19 @@ conf:
 
 
   mysql:
-    host: 192.168.0.72
+    host: 172.30.14.230
     port: 3306
     username: root
-    password: dory@2022
+    password: angan@2023
     database: pig_device
     max_idle_conns: 5 # 最大空闲的连接数
     Max_open_conns: 30
     show_sql: true
   mqtt:
-    host: 192.168.0.73
+    host: 172.30.14.230
     port: 1883
-    username: admin
-    password: public
+    username: juxunda
+    password: juxunda@202345465
   tdengine:
     host: h1.taosdata.com
     port: 6030
@@ -34,24 +34,24 @@ conf:
     Keep: 90
     Days: 20
   redis:
-    addr: 192.168.0.18:6379
-    password: dory@2022
+    addr: 172.30.14.230:6379
+    password: angan@2023
     db: 0
   rabbitmq:
-    uri: amqp://guest:guest@192.168.0.73:5672/
+    uri: amqp://guest:guest@172.30.14.230:5672/
     exchange:
   log:
     error_log:
       level: info       # supports levels, lower to higher: debug, info, warn, error, panic, fatal
       file_path:
         logs/error.logs  # supports relative path, absolute path, standard output
-      # such as: logs/error.logs, /tmp/logs/error.logs, /dev/stdout, /dev/stderr
+        # such as: logs/error.logs, /tmp/logs/error.logs, /dev/stdout, /dev/stderr
       # such as absolute path on Windows: winfile:///C:\error.logs
     access_log:
       file_path:
         logs/access.logs  # supports relative path, absolute path, standard output
         # such as: logs/access.logs, /tmp/logs/access.logs, /dev/stdout, /dev/stderr
-      # such as absolute path on Windows: winfile:///C:\access.logs
+        # such as absolute path on Windows: winfile:///C:\access.logs
       # logs example: 2020-12-09T16:38:09.039+0800	INFO	filter/logging.go:46	/apisix/admin/routes/r1	{"status": 401, "host": "127.0.0.1:9000", "query": "asdfsafd=adf&a=a", "requestId": "3d50ecb8-758c-46d1-af5b-cd9d1c820156", "latency": 0, "RemoteIp": "127.0.0.1", "method": "PUT", "errs": []}
   max_cpu: 0             # supports tweaking with the number of OS threads are going to be used for parallelism. Default value: 0 [will use max number of available cpu cores considering hyperthreading (if any)]. If the value is negative, is will not touch the existing parallelism profile.
 

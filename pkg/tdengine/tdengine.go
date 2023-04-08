@@ -6,7 +6,7 @@ import (
 	"quick/conf"
 	"quick/pkg/log"
 
-	_ "github.com/taosdata/driver-go/v2/taosSql"
+	_ "github.com/taosdata/driver-go/v3/taosSql"
 	"strconv"
 )
 

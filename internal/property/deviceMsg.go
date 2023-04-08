@@ -14,6 +14,7 @@ type DeviceMsg struct {
 	DeviceId     string    `json:"deviceId"`
 	GroupId      int       `json:"groupId"`
 	Status       string    `json:"status"`
+	DeviceType   int       `json:"deviceType"`
 	Name         string    `json:"name" `
 	SlaveId      int       `json:"slaveId"`
 	SlaveName    string    `json:"slaveName"`
@@ -83,9 +84,9 @@ func (r DeviceMsg) TaosValues() []interface{} {
 	var values []interface{}
 	values = append(values, r.Ts)
 	if r.DataType == DATA {
-		values = append(values, r.Data, r.Level, r.SlaveName, r.PropertyName, r.Unit)
+		values = append(values, r.Data, r.Level, r.DeviceType, r.GroupId, r.SlaveName, r.PropertyName, r.Unit)
 	} else {
-		values = append(values, r.Data, r.Level, r.SlaveName, r.PropertyName, r.Unit)
+		values = append(values, r.Data, r.Level, r.DeviceType, r.GroupId, r.SlaveName, r.PropertyName, r.Unit)
 	}
 
 	return values
