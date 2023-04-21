@@ -4,8 +4,8 @@ package redis
 import (
 	"context"
 	"fmt"
-	"github.com/go-redis/redis/v8"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/redis/go-redis/v9"
 	"github.com/spf13/cast"
 	"os"
 	"quick/conf"
@@ -46,7 +46,6 @@ func NewClient(conf *conf.Redis) *RedisClient {
 	// 使用 redis 库里的 NewClient 初始化连接
 	rds.Client = redis.NewClient(&redis.Options{
 		Addr:     conf.Addr,
-		Username: "",
 		Password: conf.Password,
 		DB:       conf.Db,
 	})

@@ -38,6 +38,10 @@ type Line struct {
 	Iccid  string `json:"iccid"`
 	Status string `json:"status"`
 }
+type ApiLine struct {
+	DeviceId string `json:"deviceId"`
+	Status   int    `json:"status"`
+}
 
 const (
 	defaultProductId = 0
@@ -150,8 +154,8 @@ func (d *Data) Execute() {
 			PropertyName: slaveProperty.PropertyName,
 		}
 
-		queue.Enqueue(msg)               //将数据放入队列
-		if d.Le == High || d.Le == Low { //如果是高报或者低报
+		queue.Enqueue(msg)                                                                                                                                                 //将数据放入队列
+		if d.Le == High || d.Le == Low || d.Le == Internal || d.Le == Communication || d.Le == Shield || d.Le == SlaveHitch || d.Le == MainHitch || d.Le == PrepareHitch { //如果是高报或者低报
 			msg = &DeviceMsg{
 				Ts: time.Now(),
 
@@ -196,7 +200,8 @@ func (d *Event) Execute() {
 		}
 		if slaveProperty != nil { //如果设备属性存在
 			var msg *DeviceMsg
-			if d.Le == High || d.Le == Low || d.Le == Normal { //如果是高报或者低报或者正常
+			//         正常			      高             低              探测器内部错误
+			if d.Le == Normal || d.Le == High || d.Le == Low || d.Le == Internal || d.Le == Communication || d.Le == Shield || d.Le == SlaveHitch || d.Le == MainHitch || d.Le == PrepareHitch { //如果是高报或者低报或者正常
 				if device.GroupId != 0 { //如果设备有分组
 					msg = &DeviceMsg{
 						Ts: time.Now(),
@@ -224,6 +229,9 @@ func (d *Event) Execute() {
 							//topic.Device_notify的+插入d.Ic
 							Publish(fmt.Sprintf(topic.Device_notify, d.Iccid), msg) //将数据发布到mqtt device/notify
 						}
+
+					}
+					if d.Le == High || d.Le == Low || d.Le == Internal || d.Le == Communication || d.Le == Shield || d.Le == SlaveHitch || d.Le == MainHitch || d.Le == PrepareHitch {
 						queue.Enqueue(msg) //将数据放入alarm队列
 					}
 

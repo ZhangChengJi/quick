@@ -34,7 +34,7 @@ conf:
     Keep: 90
     Days: 20
   redis:
-    addr: 192.168.0.18:6379
+    addr: 47.92.101.127:6379
     password: dory@2022
     db: 0
   rabbitmq:

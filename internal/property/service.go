@@ -51,9 +51,10 @@ func updateDeviceStatus(iccid string, status int) {
 		return
 	}
 	if device.GroupId != 0 {
-		s := `{"deviceId":"%s","status":%d}`
-		sd := fmt.Sprintf(s, iccid, status)
-		line, err := json.Marshal(sd)
+		apiLine := &ApiLine{
+			DeviceId: iccid,
+			Status:   status,
+		}
 		if err != nil {
 			return
 		}
@@ -62,18 +63,19 @@ func updateDeviceStatus(iccid string, status int) {
 			msg := &DeviceMsg{
 				Ts: time.Now(),
 
-				DataType: ALARM,
-				Level:    line,
-				DeviceId: iccid,
-				GroupId:  device.GroupId,
-				Name:     device.DeviceName,
-				Address:  device.DeviceAddress,
+				DataType:   ALARM,
+				Level:      line,
+				DeviceId:   iccid,
+				GroupId:    device.GroupId,
+				Name:       device.DeviceName,
+				DeviceType: Detector,
+				Address:    device.DeviceAddress,
 			}
 			Publish(fmt.Sprintf(topic.Device_notify, iccid), msg)
 			Publish(fmt.Sprintf(topic.Device_event, strconv.Itoa(device.GroupId), iccid), msg)
 		}
 		Publish(fmt.Sprintf(topic.Device_line, strconv.Itoa(device.GroupId), iccid), status)
-		Publish(fmt.Sprintf(topic.OpenApi_line, strconv.Itoa(device.GroupId), iccid), line)
+		Publish(fmt.Sprintf(topic.OpenApi_line, strconv.Itoa(device.GroupId), iccid), apiLine)
 
 	}
 
@@ -97,7 +99,7 @@ func updateDeviceStatus(iccid string, status int) {
 func updateDeviceHitch(iccid string, hitch int) {
 	var err error
 	var pigDevice *model.PigDevice
-	if hitch == 7 || hitch == 9 {
+	if hitch == 7 || hitch == 9 { //7主电故障 9主电恢复
 		if hitch == 7 {
 			hitch = 1
 		}
@@ -107,7 +109,7 @@ func updateDeviceHitch(iccid string, hitch int) {
 		err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("main_hitch", hitch).Error
 
 	}
-	if hitch == 8 || hitch == 10 {
+	if hitch == 8 || hitch == 10 { //8备电故障 10备电恢复
 		if hitch == 8 {
 			hitch = 1
 		}
@@ -117,7 +119,7 @@ func updateDeviceHitch(iccid string, hitch int) {
 		err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("prepare_hitch", hitch).Error
 
 	}
-	if hitch == 11 {
+	if hitch == 11 { //全部恢复
 		err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("main_hitch", 0).Error
 		err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("prepare_hitch", 0).Error
 
@@ -140,19 +142,20 @@ func installLine(iccid string, status int) {
 	var pigDeviceSlave []*model.PigDeviceSlave
 	err := db.DB.Find(&pigDeviceSlave, model.PigDeviceSlave{DeviceId: iccid}).Error
 	if err == nil {
-		line := 11
+		line := 21
 		if status == 1 {
-			line = 10
+			line = 20
 		}
 		for _, s := range pigDeviceSlave {
 			msg := &DeviceMsg{
 				Ts: time.Now(),
 
-				DataType:  DATA,
-				Level:     line, //上线
-				DeviceId:  iccid,
-				SlaveId:   s.ModbusAddress,
-				SlaveName: s.SlaveName,
+				DataType:   DATA,
+				Level:      line, //上线
+				DeviceId:   iccid,
+				SlaveId:    s.ModbusAddress,
+				SlaveName:  s.SlaveName,
+				DeviceType: Detector,
 			}
 			queue.Enqueue(msg)
 		}

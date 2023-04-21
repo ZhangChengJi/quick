@@ -53,9 +53,9 @@ func (r DeviceMsg) TaosSTable() string {
 func (r DeviceMsg) TaosTags() []interface{} {
 	var tags []interface{}
 	if r.DataType == DATA {
-		tags = append(tags, r.DeviceId, r.SlaveId)
+		tags = append(tags, r.DeviceId, r.SlaveId, r.GroupId)
 	} else {
-		tags = append(tags, r.DeviceId, r.SlaveId)
+		tags = append(tags, r.DeviceId, r.SlaveId, r.GroupId)
 	}
 	return tags
 }
@@ -64,9 +64,9 @@ func (r DeviceMsg) TaosTags() []interface{} {
 func (r DeviceMsg) TaosTable() string {
 	switch r.DataType {
 	case DATA:
-		return strings.Join([]string{"device_data", r.DeviceId, strconv.Itoa(r.SlaveId)}, "_")
+		return strings.Join([]string{"device_data", r.DeviceId, strconv.Itoa(r.SlaveId), strconv.Itoa(r.GroupId)}, "_")
 	case ALARM:
-		return strings.Join([]string{"device_alarm", r.DeviceId, strconv.Itoa(r.SlaveId)}, "_")
+		return strings.Join([]string{"device_alarm", r.DeviceId, strconv.Itoa(r.SlaveId), strconv.Itoa(r.GroupId)}, "_")
 	default:
 		return ""
 
@@ -84,9 +84,9 @@ func (r DeviceMsg) TaosValues() []interface{} {
 	var values []interface{}
 	values = append(values, r.Ts)
 	if r.DataType == DATA {
-		values = append(values, r.Data, r.Level, r.DeviceType, r.GroupId, r.SlaveName, r.PropertyName, r.Unit)
+		values = append(values, r.Data, r.Level, r.DeviceType, r.SlaveName, r.PropertyName, r.Unit)
 	} else {
-		values = append(values, r.Data, r.Level, r.DeviceType, r.GroupId, r.SlaveName, r.PropertyName, r.Unit)
+		values = append(values, r.Data, r.Level, r.DeviceType, r.SlaveName, r.PropertyName, r.Unit)
 	}
 
 	return values

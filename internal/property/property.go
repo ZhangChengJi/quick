@@ -56,8 +56,8 @@ func (p *property) run() {
 	}
 	go batch(queue, 4, db.TDB)
 	p.mqtt.Subscribe(topic.Property_config_post_topic, 1, p.propertyMetaHandler)
-	p.mqtt.Subscribe(topic.Property_post_topic, 1, p.propertyHandler)
-	p.mqtt.Subscribe(topic.Event_post_topic, 1, p.eventHandler)
+	p.mqtt.Subscribe(topic.Property_post_topic, 0, p.propertyHandler)
+	p.mqtt.Subscribe(topic.Event_post_topic, 0, p.eventHandler)
 	p.mqtt.Subscribe(topic.Device_connect, 1, p.connectHandler)
 	p.mqtt.Subscribe(topic.Device_disconnect, 1, p.disconnectHandler)
 }
