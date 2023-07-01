@@ -78,7 +78,7 @@ func updateDeviceStatus(iccid string, status int) {
 		Publish(fmt.Sprintf(topic.OpenApi_line, strconv.Itoa(device.GroupId), iccid), apiLine)
 
 	}
-
+	installLine(iccid, device.GroupId, status)
 	var pigDevice *model.PigDevice
 	err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("line_status", status).Error
 	if err == nil {
@@ -93,7 +93,6 @@ func updateDeviceStatus(iccid string, status int) {
 	}
 	var pigDeviceSlave model.PigDeviceSlave
 	err = db.DB.Model(&pigDeviceSlave).Where("device_id=? ", iccid).Update("line_status", status).Error
-	installLine(iccid, status)
 
 }
 func updateDeviceHitch(iccid string, hitch int) {
@@ -138,18 +137,19 @@ func updateDeviceHitch(iccid string, hitch int) {
 }
 
 // 上下线操作
-func installLine(iccid string, status int) {
+func installLine(iccid string, groupId int, status int) {
 	var pigDeviceSlave []*model.PigDeviceSlave
 	err := db.DB.Find(&pigDeviceSlave, model.PigDeviceSlave{DeviceId: iccid}).Error
 	if err == nil {
 		line := 21
 		if status == 1 {
 			line = 20
+
 		}
 		for _, s := range pigDeviceSlave {
 			msg := &DeviceMsg{
-				Ts: time.Now(),
-
+				Ts:         time.Now(),
+				GroupId:    groupId,
 				DataType:   DATA,
 				Level:      line, //上线
 				DeviceId:   iccid,
@@ -158,6 +158,21 @@ func installLine(iccid string, status int) {
 				DeviceType: Detector,
 			}
 			queue.Enqueue(msg)
+		}
+		if line == 21 {
+			for _, s := range pigDeviceSlave {
+				msg := &DeviceMsg{
+					Ts:         time.Now(),
+					GroupId:    groupId,
+					DataType:   ALARM,
+					Level:      line, //上线
+					DeviceId:   iccid,
+					SlaveId:    s.ModbusAddress,
+					SlaveName:  s.SlaveName,
+					DeviceType: Detector,
+				}
+				queue.Enqueue(msg)
+			}
 		}
 
 	}

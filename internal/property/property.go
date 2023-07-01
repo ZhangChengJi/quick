@@ -92,10 +92,19 @@ func (p *property) eventHandler(client mqtt.Client, msg mqtt.Message) {
 
 func (p *property) connectHandler(client mqtt.Client, msg mqtt.Message) {
 	if iccid, ok := p.getIccid(msg.Topic()); ok {
-		p.zq4 <- &Line{
-			Iccid:  iccid,
-			Status: ONLINE,
+		str := string(msg.Payload())
+		if strings.Contains(str, "false") {
+			p.zq4 <- &Line{
+				Iccid:  iccid,
+				Status: OFFLINE,
+			}
+		} else {
+			p.zq4 <- &Line{
+				Iccid:  iccid,
+				Status: ONLINE,
+			}
 		}
+
 	}
 }
 func (p *property) disconnectHandler(client mqtt.Client, msg mqtt.Message) {
