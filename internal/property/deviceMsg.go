@@ -22,6 +22,7 @@ type DeviceMsg struct {
 	Data         string    `json:"data"`
 	Unit         string    `json:"unit"`
 	PropertyName string    `json:"propertyName"`
+	Signal       int       `json:"signal"`
 }
 
 // Change max partitions as you need.

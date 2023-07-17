@@ -25,6 +25,7 @@ type Data struct {
 	Sl    int    `json:"sl"`
 	Da    string `json:"da"`
 	Le    int    `json:"le"`
+	Si    int    `json:"si"`
 }
 
 type Event struct {
@@ -138,20 +139,10 @@ func (d *Data) Execute() {
 		return
 	}
 	if slaveProperty != nil { //如果设备属性存在
-		data, err := strconv.Atoi(d.Da)
-		if err != nil {
-			return
-		}
-		if data >= 20 {
-			if data >= 50 {
-				d.Le = High
-			} else {
-				d.Le = Low
-			}
-		}
 		var msg *DeviceMsg
 		msg = &DeviceMsg{
-			Ts:           time.Now(),
+			Ts: time.Now(),
+
 			DataType:     DATA,
 			Level:        d.Le,
 			DeviceId:     d.Iccid,
@@ -162,10 +153,10 @@ func (d *Data) Execute() {
 			Data:         d.Da,
 			Unit:         slaveProperty.PropertyUnit,
 			PropertyName: slaveProperty.PropertyName,
+			Signal:       d.Si,
 		}
 
-		queue.Enqueue(msg) //将数据放入队列
-
+		queue.Enqueue(msg)                                                                                                                                                 //将数据放入队列
 		if d.Le == High || d.Le == Low || d.Le == Internal || d.Le == Communication || d.Le == Shield || d.Le == SlaveHitch || d.Le == MainHitch || d.Le == PrepareHitch { //如果是高报或者低报
 			msg = &DeviceMsg{
 				Ts: time.Now(),
@@ -180,48 +171,14 @@ func (d *Data) Execute() {
 				Data:         d.Da,
 				Unit:         slaveProperty.PropertyUnit,
 				PropertyName: slaveProperty.PropertyName,
+				Signal:       d.Si,
 			}
 			queue.Enqueue(msg)
 
 		}
-		if de.GroupId != 0 {
-			msg = &DeviceMsg{
-				Ts:           time.Now(),
-				DataType:     ALARM,
-				Level:        d.Le,
-				DeviceId:     d.Iccid,
-				SlaveId:      d.Sl,
-				GroupId:      de.GroupId,
-				DeviceType:   Detector,
-				SlaveName:    pigSlave.SlaveName,
-				Data:         d.Da,
-				Unit:         slaveProperty.PropertyUnit,
-				PropertyName: slaveProperty.PropertyName,
-				Name:         de.DeviceName,
-				Address:      de.DeviceAddress,
-			}
-			Publish(fmt.Sprintf(topic.Device_event, strconv.Itoa(de.GroupId), d.Iccid), msg) //将数据发布到mqtt device/event
-			Publish(fmt.Sprintf(topic.OpenApi_event, strconv.Itoa(de.GroupId), d.Iccid), msg)
-			if d.Le == High || d.Le == Low { //如果是高报或者低报
-				//有分组的情况下进行发送短信提醒
-				//第一次发送过短信需要等待5分钟之后再次发送
-				if sendAwait5Second(d.Iccid, d.Sl) {
-					//发送电话短信通知
-					//topic.Device_notify的+插入d.Ic
-					Publish(fmt.Sprintf(topic.Device_notify, d.Iccid), msg) //将数据发布到mqtt device/notify
-				}
-
-			}
-			if d.Le == High || d.Le == Low || d.Le == Internal || d.Le == Communication || d.Le == Shield || d.Le == SlaveHitch || d.Le == MainHitch || d.Le == PrepareHitch {
-				queue.Enqueue(msg) //将数据放入alarm队列
-			}
-		}
 		Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg) //将数据发布到mqtt device/last
 		if de.GroupId != 0 {
 			Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(de.GroupId), d.Iccid), msg)
-		}
-		if d.Le == Normal { //如果为正常
-			clearSendAwait(d.Iccid, d.Sl) //清除发送等待
 		}
 
 	}
