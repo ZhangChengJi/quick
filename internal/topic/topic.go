@@ -26,4 +26,6 @@ const (
 	OpenApi_data  = "api/%s/%s/thing/post"
 	OpenApi_event = "api/%s/%s/event/post"
 	OpenApi_line  = "api/%s/%s/line/post"
+
+	Iot_thing_event = "iot/%s/thing/event/post"
 )

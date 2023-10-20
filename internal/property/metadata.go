@@ -124,6 +124,8 @@ const (
 
 func (d *Data) Execute() {
 	de, err := queryDevice(d.Iccid) //查询设备
+	groups, err := queryGroup(d.Iccid)
+
 	if err != nil {
 		return
 	}
@@ -139,6 +141,15 @@ func (d *Data) Execute() {
 		return
 	}
 	if slaveProperty != nil { //如果设备属性存在
+		if len(groups) <= 0 {
+			group := &model.PigDeviceGroup{
+				DeviceId: d.Iccid,
+				GroupId:  0,
+			}
+			groups = append(groups, group)
+		}
+		//for _, group := range groups {
+
 		var msg *DeviceMsg
 		msg = &DeviceMsg{
 			Ts: time.Now(),
@@ -146,7 +157,7 @@ func (d *Data) Execute() {
 			DataType:     DATA,
 			Level:        d.Le,
 			DeviceId:     d.Iccid,
-			GroupId:      de.GroupId,
+			GroupId:      0,
 			SlaveId:      d.Sl,
 			DeviceType:   Detector,
 			SlaveName:    pigSlave.SlaveName,
@@ -154,6 +165,7 @@ func (d *Data) Execute() {
 			Unit:         slaveProperty.PropertyUnit,
 			PropertyName: slaveProperty.PropertyName,
 			Signal:       d.Si,
+			OrgId:        de.OrgId,
 		}
 
 		queue.Enqueue(msg)                                                                                                                                                 //将数据放入队列
@@ -161,7 +173,7 @@ func (d *Data) Execute() {
 			msg = &DeviceMsg{
 				Ts: time.Now(),
 
-				GroupId:      de.GroupId,
+				GroupId:      0,
 				DataType:     ALARM,
 				Level:        d.Le,
 				DeviceId:     d.Iccid,
@@ -172,15 +184,16 @@ func (d *Data) Execute() {
 				Unit:         slaveProperty.PropertyUnit,
 				PropertyName: slaveProperty.PropertyName,
 				Signal:       d.Si,
+				OrgId:        de.OrgId,
 			}
 			queue.Enqueue(msg)
-
 		}
 		Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg) //将数据发布到mqtt device/last
-		if de.GroupId != 0 {
-			Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(de.GroupId), d.Iccid), msg)
+		for _, group := range groups {
+			if group.GroupId != 0 {
+				Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(group.GroupId), d.Iccid), msg)
+			}
 		}
-
 	}
 }
 
@@ -192,6 +205,10 @@ func (d *Event) Execute() {
 	if device.LineStatus == OFFLINE_INT { //如果设备是离线状态，就改为在线状态
 		updateDeviceStatus(d.Iccid, ONLINE_INT)
 	}
+	groups, err := queryGroup(d.Iccid)
+	if err != nil {
+		return
+	}
 	if d.Sl > 0 {
 		pigSlave, err := querySlave(d.Iccid, d.Sl)
 		if err != nil {
@@ -201,104 +218,177 @@ func (d *Event) Execute() {
 		if err != nil {
 			return
 		}
-		if slaveProperty != nil { //如果设备属性存在
+		if slaveProperty != nil {
 			var msg *DeviceMsg
+			//插入报警表数据
+			msg = &DeviceMsg{
+				Ts: time.Now(),
+
+				DataType:     ALARM,
+				Level:        d.Le,
+				DeviceId:     d.Iccid,
+				SlaveId:      d.Sl,
+				GroupId:      0,
+				DeviceType:   Detector,
+				SlaveName:    pigSlave.SlaveName,
+				Data:         d.Da,
+				Unit:         slaveProperty.PropertyUnit,
+				PropertyName: slaveProperty.PropertyName,
+				Name:         device.DeviceName,
+				Address:      device.DeviceAddress,
+				OrgId:        device.OrgId,
+			}
+			queue.Enqueue(msg)
+
+			//发送事件
+			//发送网站内通知
 			//         正常			      高             低              探测器内部错误
 			if d.Le == Normal || d.Le == High || d.Le == Low || d.Le == Internal || d.Le == Communication || d.Le == Shield || d.Le == SlaveHitch || d.Le == MainHitch || d.Le == PrepareHitch { //如果是高报或者低报或者正常
-				if device.GroupId != 0 { //如果设备有分组
-					msg = &DeviceMsg{
-						Ts: time.Now(),
+				if len(groups) > 0 || device.OrgId > 0 { //如果设备有分组
+					for _, group := range groups {
+						msg = &DeviceMsg{
+							Ts: time.Now(),
 
-						DataType:     ALARM,
-						Level:        d.Le,
-						DeviceId:     d.Iccid,
-						SlaveId:      d.Sl,
-						GroupId:      device.GroupId,
-						DeviceType:   Detector,
-						SlaveName:    pigSlave.SlaveName,
-						Data:         d.Da,
-						Unit:         slaveProperty.PropertyUnit,
-						PropertyName: slaveProperty.PropertyName,
-						Name:         device.DeviceName,
-						Address:      device.DeviceAddress,
-					}
-					Publish(fmt.Sprintf(topic.Device_event, strconv.Itoa(device.GroupId), d.Iccid), msg) //将数据发布到mqtt device/event
-					Publish(fmt.Sprintf(topic.OpenApi_event, strconv.Itoa(device.GroupId), d.Iccid), msg)
-					if d.Le == High || d.Le == Low { //如果是高报或者低报
-						//有分组的情况下进行发送短信提醒
-						//第一次发送过短信需要等待5分钟之后再次发送
-						if sendAwait5Second(d.Iccid, d.Sl) {
-							//发送电话短信通知
-							//topic.Device_notify的+插入d.Ic
-							Publish(fmt.Sprintf(topic.Device_notify, d.Iccid), msg) //将数据发布到mqtt device/notify
+							DataType:     ALARM,
+							Level:        d.Le,
+							DeviceId:     d.Iccid,
+							SlaveId:      d.Sl,
+							GroupId:      group.GroupId,
+							DeviceType:   Detector,
+							SlaveName:    pigSlave.SlaveName,
+							Data:         d.Da,
+							Unit:         slaveProperty.PropertyUnit,
+							PropertyName: slaveProperty.PropertyName,
+							Name:         device.DeviceName,
+							Address:      device.DeviceAddress,
+							OrgId:        device.OrgId,
+						}
+						Publish(fmt.Sprintf(topic.Device_event, strconv.Itoa(group.GroupId), d.Iccid), msg) //将数据发布到mqtt device/event
+						Publish(fmt.Sprintf(topic.OpenApi_event, strconv.Itoa(group.GroupId), d.Iccid), msg)
+						Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(group.GroupId), d.Iccid), msg)
+						//发送电话短信
+						if d.Le == High || d.Le == Low { //如果是高报或者低报
+							//有分组的情况下进行发送短信提醒
+							//第一次发送过短信需要等待5分钟之后再次发送
+							if sendAwait5Second("group", d.Iccid, d.Sl, group.GroupId) {
+								//发送电话短信通知
+								//topic.Device_notify的+插入d.Ic
+								Publish(fmt.Sprintf(topic.Device_notify, d.Iccid), msg) //将数据发布到mqtt device/notify
+							}
+
+						}
+						if d.Le == High || d.Le == Low || d.Le == Internal || d.Le == Communication || d.Le == Shield || d.Le == SlaveHitch || d.Le == MainHitch || d.Le == PrepareHitch {
+							queue.Enqueue(msg) //将数据放入alarm队列
 						}
 
+						if d.Le == Normal { //如果为正常
+							clearSendAwait("group", d.Iccid, d.Sl, group.GroupId) //清除发送等待
+						}
 					}
-					if d.Le == High || d.Le == Low || d.Le == Internal || d.Le == Communication || d.Le == Shield || d.Le == SlaveHitch || d.Le == MainHitch || d.Le == PrepareHitch {
-						queue.Enqueue(msg) //将数据放入alarm队列
+					if device.OrgId > 0 {
+						msg = &DeviceMsg{
+							Ts:       time.Now(),
+							DataType: ALARM,
+							Level:    d.Le,
+							DeviceId: d.Iccid,
+							SlaveId:  d.Sl,
+							//GroupId:      group.GroupId,
+							DeviceType:   Detector,
+							SlaveName:    pigSlave.SlaveName,
+							Data:         d.Da,
+							Unit:         slaveProperty.PropertyUnit,
+							PropertyName: slaveProperty.PropertyName,
+							Name:         device.DeviceName,
+							Address:      device.DeviceAddress,
+							OrgId:        device.OrgId,
+						}
+						Publish(fmt.Sprintf(topic.Iot_thing_event, strconv.Itoa(device.TenantId)), msg) //将数据发布到mqtt device/event
+						//Publish(fmt.Sprintf(topic.OpenApi_event, strconv.Itoa(group.GroupId), d.Iccid), msg)
+						//Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(group.GroupId), d.Iccid), msg)
+						//发送电话短信
+						if d.Le == High || d.Le == Low { //如果是高报或者低报
+							//有分组的情况下进行发送短信提醒
+							//第一次发送过短信需要等待5分钟之后再次发送
+							if sendAwait5Second("enterprise", d.Iccid, d.Sl, device.OrgId) {
+								//发送电话短信通知
+								//topic.Device_notify的+插入d.Ic
+								Publish(fmt.Sprintf(topic.Device_notify, d.Iccid), msg) //将数据发布到mqtt device/notify
+							}
+
+						}
+						if d.Le == High || d.Le == Low || d.Le == Internal || d.Le == Communication || d.Le == Shield || d.Le == SlaveHitch || d.Le == MainHitch || d.Le == PrepareHitch {
+							queue.Enqueue(msg) //将数据放入alarm队列
+						}
+
+						if d.Le == Normal { //如果为正常
+							clearSendAwait("enterprise", d.Iccid, d.Sl, device.OrgId) //清除发送等待
+						}
 					}
-
 				}
-
-				if d.Le == Normal { //如果为正常
-					clearSendAwait(d.Iccid, d.Sl) //清除发送等待
-				}
-
 			}
+
+			//插入到正常数据表
 			msg = &DeviceMsg{
 				Ts: time.Now(),
 
 				DataType:     DATA,
 				Level:        d.Le,
 				DeviceId:     d.Iccid,
-				GroupId:      device.GroupId,
+				GroupId:      0,
 				DeviceType:   Detector, //代表主机故障还是探测器故障
 				SlaveId:      d.Sl,
 				SlaveName:    pigSlave.SlaveName,
 				Data:         d.Da,
 				Unit:         slaveProperty.PropertyUnit,
 				PropertyName: slaveProperty.PropertyName,
+				OrgId:        device.OrgId,
 			}
 			queue.Enqueue(msg)                                    //将数据放入正常队列                              //将数据放入队列
 			Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg) //将数据发布到mqtt device/last
-			Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(device.GroupId), d.Iccid), msg)
 		}
 	}
+
+	//用于主机8备电故障+9主电10备电恢复
 	if d.Sl == 0 { //0代表是主机
 		var msg *DeviceMsg
-
-		updateDeviceHitch(d.Iccid, d.Le) //修改7主电8备电故障+9主电10备电恢复 11全部恢复
-		if d.Le == MainHitch || d.Le == PrepareHitch {
-			if device.GroupId != 0 { //如果设备有分组
-				msg = &DeviceMsg{
-					Ts: time.Now(),
-
-					DataType:   ALARM,
-					Level:      d.Le,
-					DeviceId:   d.Iccid,
-					GroupId:    device.GroupId,
-					DeviceType: HostController, //代表主机故障还是探测器故障
-					Name:       device.DeviceName,
-					Address:    device.DeviceAddress,
-				}
-				queue.Enqueue(msg)
-				Publish(fmt.Sprintf(topic.Device_notify, d.Iccid), msg)
-				Publish(fmt.Sprintf(topic.Device_event, strconv.Itoa(device.GroupId), d.Iccid), msg) //将数据发布到mqtt device/event
-				Publish(fmt.Sprintf(topic.OpenApi_event, strconv.Itoa(device.GroupId), d.Iccid), msg)
-
-			}
-		}
 		msg = &DeviceMsg{
 			Ts:         time.Now(),
 			DataType:   DATA,
 			Level:      d.Le,
 			DeviceId:   d.Iccid,
-			GroupId:    device.GroupId,
+			GroupId:    0,
 			DeviceType: HostController, //代表主机故障还是探测器故障
 		}
-		queue.Enqueue(msg)                                    //将数据放入正常队列                              //将数据放入队列
+		queue.Enqueue(msg) //将数据放入正常队列 // 将数据放入队列
+
 		Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg) //将数据发布到mqtt device/last
-		Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(device.GroupId), d.Iccid), msg)
+
+		updateDeviceHitch(d.Iccid, d.Le) //修改7主电8备电故障+9主电10备电恢复 11全部恢复
+
+		if d.Le == MainHitch || d.Le == PrepareHitch {
+			if len(groups) > 0 { //如果设备有分组
+				for _, group := range groups {
+					msg = &DeviceMsg{
+						Ts:         time.Now(),
+						DataType:   ALARM,
+						Level:      d.Le,
+						DeviceId:   d.Iccid,
+						GroupId:    group.GroupId,
+						DeviceType: HostController, //代表主机故障还是探测器故障
+						Name:       device.DeviceName,
+						Address:    device.DeviceAddress,
+						OrgId:      device.OrgId,
+					}
+					queue.Enqueue(msg)
+					//Publish(fmt.Sprintf(topic.Device_notify, d.Iccid), msg)
+					Publish(fmt.Sprintf(topic.Device_event, strconv.Itoa(group.GroupId), d.Iccid), msg) //将数据发布到mqtt device/event
+					Publish(fmt.Sprintf(topic.OpenApi_event, strconv.Itoa(group.GroupId), d.Iccid), msg)
+					Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(group.GroupId), d.Iccid), msg)
+
+				}
+			}
+
+		}
 	}
 
 }

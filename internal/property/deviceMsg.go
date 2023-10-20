@@ -23,6 +23,7 @@ type DeviceMsg struct {
 	Unit         string    `json:"unit"`
 	PropertyName string    `json:"propertyName"`
 	Signal       int       `json:"signal"`
+	OrgId        int       `json:"orgId"`
 }
 
 // Change max partitions as you need.
@@ -54,9 +55,9 @@ func (r DeviceMsg) TaosSTable() string {
 func (r DeviceMsg) TaosTags() []interface{} {
 	var tags []interface{}
 	if r.DataType == DATA {
-		tags = append(tags, r.DeviceId, r.SlaveId, r.GroupId)
+		tags = append(tags, r.DeviceId, r.SlaveId, r.GroupId, r.OrgId)
 	} else {
-		tags = append(tags, r.DeviceId, r.SlaveId, r.GroupId)
+		tags = append(tags, r.DeviceId, r.SlaveId, r.GroupId, r.OrgId)
 	}
 	return tags
 }
@@ -65,9 +66,9 @@ func (r DeviceMsg) TaosTags() []interface{} {
 func (r DeviceMsg) TaosTable() string {
 	switch r.DataType {
 	case DATA:
-		return strings.Join([]string{"device_data", r.DeviceId, strconv.Itoa(r.SlaveId), strconv.Itoa(r.GroupId)}, "_")
+		return strings.Join([]string{"device_data", r.DeviceId, strconv.Itoa(r.SlaveId), strconv.Itoa(r.GroupId), strconv.Itoa(r.OrgId)}, "_")
 	case ALARM:
-		return strings.Join([]string{"device_alarm", r.DeviceId, strconv.Itoa(r.SlaveId), strconv.Itoa(r.GroupId)}, "_")
+		return strings.Join([]string{"device_alarm", r.DeviceId, strconv.Itoa(r.SlaveId), strconv.Itoa(r.GroupId), strconv.Itoa(r.OrgId)}, "_")
 	default:
 		return ""
 

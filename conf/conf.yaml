@@ -27,16 +27,16 @@ conf:
     username: admin
     password: public
   tdengine:
-    host: h1.taosdata.com
+    host: h3.taosdata.com
     port: 6030
     username: root
     password: taosdata
     Keep: 90
     Days: 20
   redis:
-    addr: 47.92.101.127:6379
-    password: dory@2022
-    db: 0
+    addr: 192.168.0.73:6379
+    password:
+    db: 1
   rabbitmq:
     uri: amqp://guest:guest@192.168.0.73:5672/
     exchange:

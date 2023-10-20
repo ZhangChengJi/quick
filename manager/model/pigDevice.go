@@ -12,9 +12,11 @@ type PigDevice struct {
 	LineStatus       int    `gorm:"column:line_status" json:"lineStatus"`             // 设备状态: 0:离线 1:在线
 	DeviceAddress    string `gorm:"column:device_address" json:"deviceAddress"`       // 设备地址
 	DeviceCoordinate string `gorm:"column:device_coordinate" json:"deviceCoordinate"` // 设备坐标信息
-	GroupId          int    `gorm:"column:group_id" json:"groupId"`                   // 绑定分组id
-	MainHitch        int    `gorm:"column:main_hitch" json:"mainHitch"`               //主电故障
-	PrepareHitch     int    `gorm:"column:prepare_hitch" json:"prepareHitch"`         //备电故障
+	//GroupId          int    `gorm:"column:group_id" json:"groupId"`                   // 绑定分组id
+	MainHitch    int `gorm:"column:main_hitch" json:"mainHitch"`       //主电故障
+	PrepareHitch int `gorm:"column:prepare_hitch" json:"prepareHitch"` //备电故障
+	OrgId        int `gorm:"column:org_id" json:"orgId"`               //组织单位
+	TenantId     int `gorm:"column:tenant_id" json:"tenantId"`         //租户id
 }
 
 func (PigDevice) TableName() string {

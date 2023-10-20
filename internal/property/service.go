@@ -42,43 +42,82 @@ func querySlave(iccid string, slaveId int) (*model.PigDeviceSlave, error) {
 	return nil, err
 
 }
+func queryGroup(iccid string) ([]*model.PigDeviceGroup, error) {
+	var pigDeviceGroups []*model.PigDeviceGroup
+	err := db.DB.Where(&model.PigDeviceGroup{
+		DeviceId: iccid,
+	}).Find(&pigDeviceGroups).Error
+	if err != nil {
+		return pigDeviceGroups, err
+	} else {
+		return pigDeviceGroups, nil
+	}
+
+}
 func updateDeviceStatus(iccid string, status int) {
 	device, err := queryDevice(iccid)
+	groups, err := queryGroup(iccid)
 	if err != nil {
 		return
 	}
 	if device.LineStatus == status {
 		return
 	}
-	if device.GroupId != 0 {
-		apiLine := &ApiLine{
-			DeviceId: iccid,
-			Status:   status,
-		}
-		if err != nil {
-			return
-		}
-		if status == 0 {
-			line := 21 //离线
-			msg := &DeviceMsg{
-				Ts: time.Now(),
+	if len(groups) > 0 || device.OrgId > 0 {
+		for _, group := range groups {
 
-				DataType:   ALARM,
-				Level:      line,
-				DeviceId:   iccid,
-				GroupId:    device.GroupId,
-				Name:       device.DeviceName,
-				DeviceType: Detector,
-				Address:    device.DeviceAddress,
+			apiLine := &ApiLine{
+				DeviceId: iccid,
+				Status:   status,
 			}
-			Publish(fmt.Sprintf(topic.Device_notify, iccid), msg)
-			Publish(fmt.Sprintf(topic.Device_event, strconv.Itoa(device.GroupId), iccid), msg)
+			if err != nil {
+				return
+			}
+			if status == 0 {
+				line := 21 //离线
+				msg := &DeviceMsg{
+					Ts:         time.Now(),
+					DataType:   ALARM,
+					Level:      line,
+					DeviceId:   iccid,
+					GroupId:    group.GroupId,
+					Name:       device.DeviceName,
+					DeviceType: Detector,
+					Address:    device.DeviceAddress,
+				}
+				Publish(fmt.Sprintf(topic.Device_notify, iccid), msg)
+				Publish(fmt.Sprintf(topic.Device_event, strconv.Itoa(group.GroupId), iccid), msg)
+			}
+			Publish(fmt.Sprintf(topic.Device_line, strconv.Itoa(group.GroupId), iccid), status)
+			Publish(fmt.Sprintf(topic.OpenApi_line, strconv.Itoa(group.GroupId), iccid), apiLine)
+			installLine(iccid, group.GroupId, device.OrgId, status)
 		}
-		Publish(fmt.Sprintf(topic.Device_line, strconv.Itoa(device.GroupId), iccid), status)
-		Publish(fmt.Sprintf(topic.OpenApi_line, strconv.Itoa(device.GroupId), iccid), apiLine)
 
+		if device.OrgId > 0 {
+			if status == 0 {
+				line := 21 //离线
+				msg := &DeviceMsg{
+					Ts:       time.Now(),
+					DataType: ALARM,
+					Level:    line,
+					DeviceId: iccid,
+					//GroupId:    group.GroupId,
+					Name:       device.DeviceName,
+					DeviceType: Detector,
+					Address:    device.DeviceAddress,
+					OrgId:      device.OrgId,
+				}
+				//Publish(fmt.Sprintf(topic.Device_notify, iccid), msg)
+				Publish(fmt.Sprintf(topic.Iot_thing_event, strconv.Itoa(device.TenantId)), msg)
+			}
+			//Publish(fmt.Sprintf(topic.Device_line, strconv.Itoa(group.GroupId), iccid), status)
+			//Publish(fmt.Sprintf(topic.OpenApi_line, strconv.Itoa(group.GroupId), iccid), apiLine)
+			installLine(iccid, 0, device.OrgId, status)
+		}
+	} else {
+		installLine(iccid, 0, device.OrgId, status)
 	}
-	installLine(iccid, device.GroupId, status)
+
 	var pigDevice *model.PigDevice
 	err = db.DB.Model(&pigDevice).Where("id=?", iccid).Update("line_status", status).Error
 	if err == nil {
@@ -137,44 +176,47 @@ func updateDeviceHitch(iccid string, hitch int) {
 }
 
 // 上下线操作
-func installLine(iccid string, groupId int, status int) {
-	var pigDeviceSlave []*model.PigDeviceSlave
-	err := db.DB.Find(&pigDeviceSlave, model.PigDeviceSlave{DeviceId: iccid}).Error
-	if err == nil {
-		line := 21
-		if status == 1 {
-			line = 20
+func installLine(iccid string, groupId int, orgId int, status int) {
+	//var pigDeviceSlave []*model.PigDeviceSlave
+	//err := db.DB.Find(&pigDeviceSlave, model.PigDeviceSlave{DeviceId: iccid}).Error
+	//if err == nil {
+	line := 0
+	if status == 0 {
+		line = 21
+	}
 
+	if status == 1 {
+		line = 20
+	}
+	//for _, s := range pigDeviceSlave {
+	msg := &DeviceMsg{
+		Ts:       time.Now(),
+		GroupId:  groupId,
+		DataType: DATA,
+		Level:    line, //上线
+		DeviceId: iccid,
+		//	SlaveId:    s.ModbusAddress,
+		//	SlaveName:  s.SlaveName,
+		DeviceType: HostController,
+		OrgId:      orgId,
+	}
+	queue.Enqueue(msg)
+	//	}
+	if line == 21 {
+		//	for _, s := range pigDeviceSlave {
+		msg := &DeviceMsg{
+			Ts:       time.Now(),
+			GroupId:  groupId,
+			DataType: ALARM,
+			Level:    line, //离线
+			DeviceId: iccid,
+			//	SlaveId:    s.ModbusAddress,
+			//	SlaveName:  s.SlaveName,
+			DeviceType: HostController,
+			OrgId:      orgId,
 		}
-		for _, s := range pigDeviceSlave {
-			msg := &DeviceMsg{
-				Ts:         time.Now(),
-				GroupId:    groupId,
-				DataType:   DATA,
-				Level:      line, //上线
-				DeviceId:   iccid,
-				SlaveId:    s.ModbusAddress,
-				SlaveName:  s.SlaveName,
-				DeviceType: Detector,
-			}
-			queue.Enqueue(msg)
-		}
-		if line == 21 {
-			for _, s := range pigDeviceSlave {
-				msg := &DeviceMsg{
-					Ts:         time.Now(),
-					GroupId:    groupId,
-					DataType:   ALARM,
-					Level:      line, //上线
-					DeviceId:   iccid,
-					SlaveId:    s.ModbusAddress,
-					SlaveName:  s.SlaveName,
-					DeviceType: Detector,
-				}
-				queue.Enqueue(msg)
-			}
-		}
-
+		queue.Enqueue(msg)
+		//	}
 	}
 
 }
@@ -248,8 +290,8 @@ func getProperty(propertyId int) (*model.PigProperty, error) {
 	}
 	return property, nil
 }
-func sendAwait5Second(iccid string, slaveId int) bool {
-	key := db.RDB.GetAwaitSendKey(iccid, strconv.Itoa(slaveId))
+func sendAwait5Second(markType string, iccid string, slaveId int, groupId int) bool {
+	key := db.RDB.GetAwaitSendKey(markType, iccid, strconv.Itoa(slaveId), groupId)
 	if !db.RDB.Has(key) {
 		db.RDB.Set(key, 1, 5*time.Minute)
 		return true
@@ -257,7 +299,7 @@ func sendAwait5Second(iccid string, slaveId int) bool {
 		return false
 	}
 }
-func clearSendAwait(iccid string, slaveId int) {
-	key := db.RDB.GetAwaitSendKey(iccid, strconv.Itoa(slaveId))
+func clearSendAwait(markType string, iccid string, slaveId int, groupId int) {
+	key := db.RDB.GetAwaitSendKey(markType, iccid, strconv.Itoa(slaveId), groupId)
 	db.RDB.Del(key)
 }

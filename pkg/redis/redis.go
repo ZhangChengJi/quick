@@ -76,8 +76,8 @@ func (rds RedisClient) GetPropertyKey() string {
 	return fmt.Sprintf("property_info")
 
 }
-func (rds RedisClient) GetAwaitSendKey(iccid, slaveId string) string {
-	return fmt.Sprintf("await_send:%s:%s", iccid, slaveId)
+func (rds RedisClient) GetAwaitSendKey(iccid, slaveId string, markType string, groupId int) string {
+	return fmt.Sprintf("await_send:%v:%v:%s:%s", markType, groupId, iccid, slaveId)
 
 }
 
