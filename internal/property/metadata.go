@@ -152,8 +152,7 @@ func (d *Data) Execute() {
 
 		var msg *DeviceMsg
 		msg = &DeviceMsg{
-			Ts: time.Now(),
-
+			Ts:           time.Now(),
 			DataType:     DATA,
 			Level:        d.Le,
 			DeviceId:     d.Iccid,
@@ -284,68 +283,87 @@ func (d *Event) Execute() {
 						if d.Le == Normal { //如果为正常
 							clearSendAwait("group", d.Iccid, d.Sl, group.GroupId) //清除发送等待
 						}
-					}
-					if device.OrgId > 0 {
+						//插入到正常数据表
 						msg = &DeviceMsg{
-							Ts:       time.Now(),
-							DataType: ALARM,
-							Level:    d.Le,
-							DeviceId: d.Iccid,
-							SlaveId:  d.Sl,
-							//GroupId:      group.GroupId,
-							DeviceType:   Detector,
+							Ts: time.Now(),
+
+							DataType:     DATA,
+							Level:        d.Le,
+							DeviceId:     d.Iccid,
+							GroupId:      group.GroupId,
+							DeviceType:   Detector, //代表主机故障还是探测器故障
+							SlaveId:      d.Sl,
 							SlaveName:    pigSlave.SlaveName,
 							Data:         d.Da,
 							Unit:         slaveProperty.PropertyUnit,
 							PropertyName: slaveProperty.PropertyName,
-							Name:         device.DeviceName,
-							Address:      device.DeviceAddress,
 							OrgId:        device.OrgId,
 						}
-						Publish(fmt.Sprintf(topic.Iot_thing_event, strconv.Itoa(device.TenantId)), msg) //将数据发布到mqtt device/event
-						//Publish(fmt.Sprintf(topic.OpenApi_event, strconv.Itoa(group.GroupId), d.Iccid), msg)
-						//Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(group.GroupId), d.Iccid), msg)
-						//发送电话短信
-						if d.Le == High || d.Le == Low { //如果是高报或者低报
-							//有分组的情况下进行发送短信提醒
-							//第一次发送过短信需要等待5分钟之后再次发送
-							if sendAwait5Second("enterprise", d.Iccid, d.Sl, device.OrgId) {
-								//发送电话短信通知
-								//topic.Device_notify的+插入d.Ic
-								Publish(fmt.Sprintf(topic.Device_notify, d.Iccid), msg) //将数据发布到mqtt device/notify
-							}
-
-						}
-						if d.Le == High || d.Le == Low || d.Le == Internal || d.Le == Communication || d.Le == Shield || d.Le == SlaveHitch || d.Le == MainHitch || d.Le == PrepareHitch {
-							queue.Enqueue(msg) //将数据放入alarm队列
-						}
-
-						if d.Le == Normal { //如果为正常
-							clearSendAwait("enterprise", d.Iccid, d.Sl, device.OrgId) //清除发送等待
-						}
+						queue.Enqueue(msg)                                    //将数据放入正常队列                              //将数据放入队列
+						Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg) //将数据发布到mqtt device/last
 					}
 				}
-			}
+				if device.OrgId > 0 {
+					msg = &DeviceMsg{
+						Ts:       time.Now(),
+						DataType: ALARM,
+						Level:    d.Le,
+						DeviceId: d.Iccid,
+						SlaveId:  d.Sl,
+						//GroupId:      group.GroupId,
+						DeviceType:   Detector,
+						SlaveName:    pigSlave.SlaveName,
+						Data:         d.Da,
+						Unit:         slaveProperty.PropertyUnit,
+						PropertyName: slaveProperty.PropertyName,
+						Name:         device.DeviceName,
+						Address:      device.DeviceAddress,
+						OrgId:        device.OrgId,
+					}
+					Publish(fmt.Sprintf(topic.Iot_thing_event, strconv.Itoa(device.TenantId)), msg) //将数据发布到mqtt device/event
+					//Publish(fmt.Sprintf(topic.OpenApi_event, strconv.Itoa(group.GroupId), d.Iccid), msg)
+					//Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(group.GroupId), d.Iccid), msg)
+					//发送电话短信
+					if d.Le == High || d.Le == Low { //如果是高报或者低报
+						//有分组的情况下进行发送短信提醒
+						//第一次发送过短信需要等待5分钟之后再次发送
+						if sendAwait5Second("enterprise", d.Iccid, d.Sl, device.OrgId) {
+							//发送电话短信通知
+							//topic.Device_notify的+插入d.Ic
+							Publish(fmt.Sprintf(topic.Device_notify, d.Iccid), msg) //将数据发布到mqtt device/notify
+						}
 
-			//插入到正常数据表
-			msg = &DeviceMsg{
-				Ts: time.Now(),
+					}
+					if d.Le == High || d.Le == Low || d.Le == Internal || d.Le == Communication || d.Le == Shield || d.Le == SlaveHitch || d.Le == MainHitch || d.Le == PrepareHitch {
+						queue.Enqueue(msg) //将数据放入alarm队列
+					}
 
-				DataType:     DATA,
-				Level:        d.Le,
-				DeviceId:     d.Iccid,
-				GroupId:      0,
-				DeviceType:   Detector, //代表主机故障还是探测器故障
-				SlaveId:      d.Sl,
-				SlaveName:    pigSlave.SlaveName,
-				Data:         d.Da,
-				Unit:         slaveProperty.PropertyUnit,
-				PropertyName: slaveProperty.PropertyName,
-				OrgId:        device.OrgId,
+					if d.Le == Normal { //如果为正常
+						clearSendAwait("enterprise", d.Iccid, d.Sl, device.OrgId) //清除发送等待
+					}
+					//插入到正常数据表
+					msg = &DeviceMsg{
+						Ts: time.Now(),
+
+						DataType:     DATA,
+						Level:        d.Le,
+						DeviceId:     d.Iccid,
+						GroupId:      0,
+						DeviceType:   Detector, //代表主机故障还是探测器故障
+						SlaveId:      d.Sl,
+						SlaveName:    pigSlave.SlaveName,
+						Data:         d.Da,
+						Unit:         slaveProperty.PropertyUnit,
+						PropertyName: slaveProperty.PropertyName,
+						OrgId:        device.OrgId,
+					}
+					queue.Enqueue(msg)                                    //将数据放入正常队列                              //将数据放入队列
+					Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg) //将数据发布到mqtt device/last
+
+				}
 			}
-			queue.Enqueue(msg)                                    //将数据放入正常队列                              //将数据放入队列
-			Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg) //将数据发布到mqtt device/last
 		}
+
 	}
 
 	//用于主机8备电故障+9主电10备电恢复
@@ -386,6 +404,22 @@ func (d *Event) Execute() {
 					Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(group.GroupId), d.Iccid), msg)
 
 				}
+			}
+			if device.OrgId > 0 {
+				msg = &DeviceMsg{
+					Ts:         time.Now(),
+					DataType:   ALARM,
+					Level:      d.Le,
+					DeviceId:   d.Iccid,
+					GroupId:    0,
+					DeviceType: HostController, //代表主机故障还是探测器故障
+					Name:       device.DeviceName,
+					Address:    device.DeviceAddress,
+					OrgId:      device.OrgId,
+				}
+				queue.Enqueue(msg)
+				Publish(fmt.Sprintf(topic.Iot_thing_event, strconv.Itoa(device.TenantId)), msg) //将数据发布到mqtt device/event
+
 			}
 
 		}
