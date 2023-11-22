@@ -321,8 +321,6 @@ func (d *Event) Execute() {
 						OrgId:        device.OrgId,
 					}
 					Publish(fmt.Sprintf(topic.Iot_thing_event, strconv.Itoa(device.TenantId)), msg) //将数据发布到mqtt device/event
-					//Publish(fmt.Sprintf(topic.OpenApi_event, strconv.Itoa(group.GroupId), d.Iccid), msg)
-					//Publish(fmt.Sprintf(topic.OpenApi_data, strconv.Itoa(group.GroupId), d.Iccid), msg)
 					//发送电话短信
 					if d.Le == High || d.Le == Low { //如果是高报或者低报
 						//有分组的情况下进行发送短信提醒
@@ -330,7 +328,7 @@ func (d *Event) Execute() {
 						if sendAwait5Second("enterprise", d.Iccid, d.Sl, device.OrgId) {
 							//发送电话短信通知
 							//topic.Device_notify的+插入d.Ic
-							Publish(fmt.Sprintf(topic.Device_notify, d.Iccid), msg) //将数据发布到mqtt device/notify
+							Publish(fmt.Sprintf(topic.Iot_thing_notify, d.Iccid), msg) //将数据发布到mqtt device/notify
 						}
 
 					}
