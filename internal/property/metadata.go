@@ -219,25 +219,6 @@ func (d *Event) Execute() {
 		}
 		if slaveProperty != nil {
 			var msg *DeviceMsg
-			//插入报警表数据
-			msg = &DeviceMsg{
-				Ts: time.Now(),
-
-				DataType:     ALARM,
-				Level:        d.Le,
-				DeviceId:     d.Iccid,
-				SlaveId:      d.Sl,
-				GroupId:      0,
-				DeviceType:   Detector,
-				SlaveName:    pigSlave.SlaveName,
-				Data:         d.Da,
-				Unit:         slaveProperty.PropertyUnit,
-				PropertyName: slaveProperty.PropertyName,
-				Name:         device.DeviceName,
-				Address:      device.DeviceAddress,
-				OrgId:        device.OrgId,
-			}
-			queue.Enqueue(msg)
 
 			//发送事件
 			//发送网站内通知
@@ -359,6 +340,44 @@ func (d *Event) Execute() {
 					Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg) //将数据发布到mqtt device/last
 
 				}
+			}
+			if len(groups) == 0 || device.OrgId == 0 {
+				//插入报警表数据
+				msg = &DeviceMsg{
+					Ts: time.Now(),
+
+					DataType:     ALARM,
+					Level:        d.Le,
+					DeviceId:     d.Iccid,
+					SlaveId:      d.Sl,
+					GroupId:      0,
+					DeviceType:   Detector,
+					SlaveName:    pigSlave.SlaveName,
+					Data:         d.Da,
+					Unit:         slaveProperty.PropertyUnit,
+					PropertyName: slaveProperty.PropertyName,
+					Name:         device.DeviceName,
+					Address:      device.DeviceAddress,
+					OrgId:        device.OrgId,
+				}
+				queue.Enqueue(msg)
+				//插入到正常数据表
+				msg = &DeviceMsg{
+					Ts:           time.Now(),
+					DataType:     DATA,
+					Level:        d.Le,
+					DeviceId:     d.Iccid,
+					GroupId:      0,
+					DeviceType:   Detector, //代表主机故障还是探测器故障
+					SlaveId:      d.Sl,
+					SlaveName:    pigSlave.SlaveName,
+					Data:         d.Da,
+					Unit:         slaveProperty.PropertyUnit,
+					PropertyName: slaveProperty.PropertyName,
+					OrgId:        0,
+				}
+				queue.Enqueue(msg)                                    //将数据放入正常队列                              //将数据放入队列
+				Publish(fmt.Sprintf(topic.Device_last, d.Iccid), msg) //将数据发布到mqtt device/last
 			}
 		}
 
